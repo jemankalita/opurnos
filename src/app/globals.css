@@ -1,0 +1,296 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Opurnos design tokens: "Paper & Ink".
+   Warm paper and near-black ink, Libertinus Serif for display, Public Sans for reading,
+   DM Mono for small printed labels. Colour is printed, never glowing: sage, periwinkle,
+   clay and sky appear as flat fields (stamps, verdicts, dithered pictures).
+   Light is the default; [data-theme="dark"] is an ink-coloured night edition.
+   ------------------------------------------------------------------ */
+:root {
+  --bg: #fffbf2;
+  --surface: #fffdf8;
+  --elevated: #f8f2e5;
+  --sunken: #f3ecde;
+  --border: rgb(20 13 13 / 0.11);
+  --border-strong: rgb(20 13 13 / 0.2);
+  --text: #140d0d;
+  --muted: #5b544c;
+  --faint: #857d72;
+  --accent: #140d0d;
+  --accent-ink: #fffbf2;
+  --accent-soft: rgb(20 13 13 / 0.05);
+  --signal: #b4492c;
+  --label: #606c47;
+  --eligible: #47663a;
+  --likely: #3b4db0;
+  --stretch: #a8512f;
+  --ineligible: #8a8278;
+  --danger: #b3261e;
+  --sage: #b3bf96;
+  --peri: #b6c4fd;
+  --clay: #e7a88c;
+  --sky: #9dc3f2;
+  --sand: #ede4d0;
+  --ring: rgb(59 77 176 / 0.6);
+  --shadow: none;
+  --shadow-float: 0 18px 40px -18px rgb(20 13 13 / 0.35);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #14100e;
+  --surface: #1a1512;
+  --elevated: #221c18;
+  --sunken: #0f0c0a;
+  --border: rgb(255 246 230 / 0.1);
+  --border-strong: rgb(255 246 230 / 0.19);
+  --text: #f4ede0;
+  --muted: #b3a99a;
+  --faint: #8a8072;
+  --accent: #f4ede0;
+  --accent-ink: #14100e;
+  --accent-soft: rgb(255 246 230 / 0.06);
+  --signal: #ec8f6f;
+  --label: #a9b78c;
+  --eligible: #a9c08c;
+  --likely: #aab6fa;
+  --stretch: #eba386;
+  --ineligible: #8a8072;
+  --danger: #f07167;
+  --sage: #8f9b73;
+  --peri: #8d9be0;
+  --clay: #c98a6f;
+  --sky: #7da3d4;
+  --sand: #3a312a;
+  --ring: rgb(170 182 250 / 0.6);
+  --shadow-float: 0 18px 40px -18px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-sunken: var(--sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-signal: var(--signal);
+  --color-label: var(--label);
+  --color-eligible: var(--eligible);
+  --color-likely: var(--likely);
+  --color-stretch: var(--stretch);
+  --color-ineligible: var(--ineligible);
+  --color-danger: var(--danger);
+  --color-sage: var(--sage);
+  --color-peri: var(--peri);
+  --color-clay: var(--clay);
+  --color-sky: var(--sky);
+  --color-sand: var(--sand);
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+  --font-serif: var(--font-libertinus), "Libertinus Serif", Georgia, serif;
+  --font-display: var(--font-libertinus-display), var(--font-libertinus), Georgia, serif;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: var(--peri);
+  color: #140d0d;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.text-pretty {
+  text-wrap: pretty;
+}
+
+/*
+ * Reusable pieces live in the components layer so utilities (hidden, h-*, p-*) can still override them.
+ * Unlayered rules here would beat every Tailwind utility.
+ */
+@layer components {
+/* Small printed label, as on a ticket or a museum card. */
+.label {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* Dotted hairline, like a perforation line on paper. */
+.rule-dotted {
+  height: 2px;
+  background-image: radial-gradient(circle, var(--border-strong) 0.7px, transparent 0.9px);
+  background-size: 4px 2px;
+  background-repeat: repeat-x;
+}
+
+/*
+ * Dithered picture: a 1-bit PNG used as a mask, so the same print can be inked in any colour.
+ * Usage: <span class="dither" style="--art:url(/art/clock.png)"> with a text colour.
+ */
+.dither {
+  display: block;
+  background-color: currentColor;
+  -webkit-mask: var(--art) center / contain no-repeat;
+  mask: var(--art) center / contain no-repeat;
+  image-rendering: pixelated;
+}
+.dither-fill {
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+/* Postage stamp: perforated edge cut from the page colour around a flat field. */
+.stamp {
+  --stamp: var(--sand);
+  --hole: var(--bg);
+  padding: 9px;
+  background:
+    radial-gradient(circle, var(--hole) 3.6px, transparent 4px) -6px -6px / 12px 12px,
+    var(--stamp);
+}
+.stamp-face {
+  position: relative;
+  height: 100%;
+  background: var(--stamp);
+  box-shadow: inset 0 0 0 1px rgb(20 13 13 / 0.55);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.skeleton {
+  background: var(--elevated);
+  animation: breathe 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.caret {
+  animation: blink 1.1s steps(1) infinite;
+}
+
+/*
+ * Landing: stamps fanned on a desk (wide screens), a plain swipe row below that.
+ * The picked stamp keeps its place in the arc and only lifts a little; the others fade back,
+ * so the arc never breaks.
+ */
+.fan {
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.3s ease,
+    filter 0.3s ease;
+}
+.fan:not(.fan-on) {
+  opacity: 0.62;
+  filter: saturate(0.55);
+}
+.group:hover .fan,
+.group:focus-visible .fan {
+  opacity: 1;
+  filter: none;
+}
+@media (min-width: 1024px) {
+  .fan {
+    transform: translateY(var(--y)) rotate(var(--r));
+  }
+  .group:hover .fan:not(.fan-on) {
+    transform: translateY(calc(var(--y) - 8px)) rotate(var(--r));
+  }
+}
+
+/* Scroll reveal: parts of a section rise in turn. Only hidden once the observer is running. */
+.js-reveal .reveal:not([data-in]) {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.reveal {
+  transition:
+    opacity 0.7s ease,
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+
+@keyframes drift {
+  from {
+    transform: scale(1.04) translateY(0);
+  }
+  to {
+    transform: scale(1.04) translateY(-2.5%);
+  }
+}
+.drift {
+  animation: drift 14s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js-reveal .reveal:not([data-in]) {
+    transform: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

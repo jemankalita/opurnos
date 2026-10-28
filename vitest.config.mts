@@ -1,0 +1,15 @@
+import path from "node:path";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  resolve: {
+    alias: { "@": path.resolve(import.meta.dirname, "src") },
+  },
+  test: {
+    environment: "node",
+    include: ["tests/**/*.test.ts"],
+    testTimeout: 60_000,
+    hookTimeout: 120_000,
+    coverage: { include: ["src/lib/**"], exclude: ["src/lib/apply/browser.ts", "src/lib/db/schema.ts"] },
+  },
+});

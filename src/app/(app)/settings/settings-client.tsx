@@ -1,0 +1,267 @@
+"use client";
+
+import { Download, Mail, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { PrefsEditor } from "@/components/prefs-editor";
+import { LocalTime } from "@/components/local-time";
+import { Button, Panel, SectionLabel, Spinner } from "@/components/ui";
+import type { Preferences } from "@/lib/schemas";
+import { cn } from "@/lib/utils";
+
+type Source = { id: string; kind: string; label: string; status: string; lastCount: number; lastError: string | null; lastRunAt: string | null };
+type Usage = { kind: string; model: string; calls: number; cost: number; tokens: number; failures: number };
+
+type Props = {
+  email: string;
+  prefs: Preferences;
+  resumeName: string | null;
+  lastDigestAt: string | null;
+  demo: boolean;
+  budget: { spent: number; cap: number; applyCap: number };
+  usage: Usage[];
+  sources: Source[];
+};
+
+async function call(url: string, init?: RequestInit) {
+  const json = await fetch(url, init).then((r) => r.json());
+  if (!json.ok) throw new Error(json.error);
+  return json.data;
+}
+
+export function SettingsClient(props: Props) {
+  return (
+    <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="min-w-0 space-y-6">
+        <PrefsSection initial={props.prefs} />
+        <SourcesSection sources={props.sources} />
+      </div>
+      <aside className="space-y-6">
+        <AccountSection email={props.email} resumeName={props.resumeName} />
+        <DigestSection lastDigestAt={props.lastDigestAt} />
+        <UsageSection demo={props.demo} budget={props.budget} usage={props.usage} />
+        <DangerSection />
+      </aside>
+    </div>
+  );
+}
+
+function PrefsSection({ initial }: { initial: Preferences }) {
+  const router = useRouter();
+  const [prefs, setPrefs] = useState(initial);
+  const [state, setState] = useState<"idle" | "saving" | "rescanning" | "done">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const dirty = JSON.stringify(prefs) !== JSON.stringify(initial);
+
+  async function save() {
+    setError(null);
+    try {
+      setState("saving");
+      await call("/api/profile", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ prefs }) });
+      setState("rescanning");
+      await call("/api/match", { method: "POST" });
+      setState("done");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save.");
+      setState("idle");
+    }
+  }
+
+  return (
+    <Panel className="p-5 sm:p-6">
+      <SectionLabel>Preferences</SectionLabel>
+      <div className="mt-5">
+        <PrefsEditor prefs={prefs} onChange={setPrefs} />
+      </div>
+      <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
+        <Button onClick={save} disabled={!dirty || state === "saving" || state === "rescanning"}>
+          {state === "saving" || state === "rescanning" ? <Spinner /> : null}
+          {state === "saving" ? "Saving…" : state === "rescanning" ? "Rescanning your radar…" : "Save & rescan"}
+        </Button>
+        {state === "done" && !dirty ? <span className="text-sm text-eligible">Saved. Your radar is up to date.</span> : null}
+        {error ? <span className="text-sm text-danger">{error}</span> : null}
+        <span className="text-xs text-faint">Saved and applied items are kept.</span>
+      </div>
+    </Panel>
+  );
+}
+
+function SourcesSection({ sources }: { sources: Source[] }) {
+  const healthy = sources.filter((s) => s.status === "ok").length;
+  return (
+    <Panel className="p-5 sm:p-6">
+      <div className="flex items-center justify-between">
+        <SectionLabel>Sources we watch</SectionLabel>
+        <span className="font-mono text-xs text-faint">
+          {healthy}/{sources.length} healthy
+        </span>
+      </div>
+      <div className="scrollbar-thin mt-4 max-h-[420px] overflow-y-auto">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-surface text-left text-xs text-faint">
+            <tr>
+              <th className="py-2 font-normal">Source</th>
+              <th className="py-2 font-normal">Listings</th>
+              <th className="hidden py-2 font-normal sm:table-cell">Last checked</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {sources.map((s) => (
+              <tr key={s.id} title={s.lastError ?? undefined}>
+                <td className="py-2.5">
+                  <span className="flex items-center gap-2">
+                    <span className={cn("size-1.5 shrink-0 rounded-full", s.status === "ok" ? "bg-eligible" : s.status === "error" ? "bg-danger" : "bg-faint")} />
+                    <span className="truncate">{s.label}</span>
+                    <span className="font-mono text-[10px] uppercase text-faint">{s.kind}</span>
+                  </span>
+                </td>
+                <td className="py-2.5 font-mono text-xs tabular text-muted">{s.status === "error" ? <span className="text-danger">error</span> : s.lastCount}</td>
+                <td className="hidden py-2.5 font-mono text-xs text-faint sm:table-cell">{s.lastRunAt ? <LocalTime value={s.lastRunAt} /> : "never"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!sources.length ? <p className="py-6 text-center text-sm text-muted">No scans yet. Your first rescan pulls every source.</p> : null}
+      </div>
+    </Panel>
+  );
+}
+
+function AccountSection({ email, resumeName }: { email: string; resumeName: string | null }) {
+  return (
+    <Panel className="p-5">
+      <SectionLabel>Account</SectionLabel>
+      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <dt className="text-faint">Email</dt>
+        <dd className="truncate">{email}</dd>
+        <dt className="text-faint">Resume</dt>
+        <dd className="truncate">{resumeName ?? "Pasted text"}</dd>
+      </dl>
+      <Link href="/start" className="mt-4 inline-block text-sm underline underline-offset-4 hover:decoration-2">
+        Replace resume or edit profile →
+      </Link>
+    </Panel>
+  );
+}
+
+function DigestSection({ lastDigestAt }: { lastDigestAt: string | null }) {
+  const [state, setState] = useState<"idle" | "sending" | string>("idle");
+  async function send() {
+    setState("sending");
+    try {
+      const r = await call("/api/digest", { method: "POST" });
+      setState(r.sent ? `Sent ${r.count} picks to your inbox.` : "Nothing new to send right now.");
+    } catch (err) {
+      setState(err instanceof Error ? err.message : "Couldn't send.");
+    }
+  }
+  return (
+    <Panel className="p-5">
+      <SectionLabel>Email digest</SectionLabel>
+      <p className="mt-2 text-sm text-muted">Last sent {lastDigestAt ? <LocalTime value={lastDigestAt} /> : "never"}. Choose daily or weekly in preferences.</p>
+      <Button variant="secondary" size="sm" className="mt-4" onClick={send} disabled={state === "sending"}>
+        {state === "sending" ? <Spinner /> : <Mail className="size-4" />} Send my digest now
+      </Button>
+      {state !== "idle" && state !== "sending" ? <p className="mt-2 text-xs text-muted">{state}</p> : null}
+    </Panel>
+  );
+}
+
+function UsageSection({ demo, budget, usage }: Pick<Props, "demo" | "budget" | "usage">) {
+  const pct = Math.min(100, (budget.spent / budget.cap) * 100);
+  return (
+    <Panel className="p-5">
+      <SectionLabel>AI usage</SectionLabel>
+      {demo ? <p className="mt-2 rounded-md border border-text/25 bg-elevated px-3 py-2 text-xs">Demo mode: no model key is set, so rules and heuristics stand in for Muse Spark.</p> : null}
+      <div className="mt-3 flex items-baseline justify-between text-sm">
+        <span className="text-muted">Today</span>
+        <span className="font-mono tabular">
+          ${budget.spent.toFixed(3)} / ${budget.cap.toFixed(2)}
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border">
+        <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-2 text-xs text-faint">Up to {budget.applyCap} agent applications per day.</p>
+      {usage.length ? (
+        <table className="mt-4 w-full text-xs">
+          <thead className="text-left text-faint">
+            <tr>
+              <th className="pb-1.5 font-normal">Last 30 days</th>
+              <th className="pb-1.5 text-right font-normal">Calls</th>
+              <th className="pb-1.5 text-right font-normal">Cost</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {usage.map((u) => (
+              <tr key={`${u.kind}-${u.model}`}>
+                <td className="py-1.5">
+                  {u.kind} <span className="font-mono text-faint">{u.model}</span>
+                </td>
+                <td className="py-1.5 text-right font-mono tabular">
+                  {u.calls}
+                  {u.failures ? <span className="text-danger"> ({u.failures}✕)</span> : null}
+                </td>
+                <td className="py-1.5 text-right font-mono tabular">${u.cost.toFixed(3)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+    </Panel>
+  );
+}
+
+function DangerSection() {
+  const router = useRouter();
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function exportData() {
+    const data = await call("/api/account");
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: "opurnos-export.json" });
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function remove() {
+    setBusy(true);
+    try {
+      await call("/api/account", { method: "DELETE" });
+      router.push("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't delete.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Panel className="p-5">
+      <SectionLabel>Your data</SectionLabel>
+      <Button variant="secondary" size="sm" className="mt-3" onClick={() => void exportData().catch((e) => setError(String(e)))}>
+        <Download className="size-4" /> Export everything (JSON)
+      </Button>
+      <div className="mt-5 border-t border-border pt-4">
+        <label className="text-xs text-muted" htmlFor="delete-confirm">
+          Type <span className="font-mono text-text">delete</span> to erase your account, resume, matches and applications.
+        </label>
+        <div className="mt-2 flex gap-2">
+          <input
+            id="delete-confirm"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className="h-9 min-w-0 flex-1 rounded-md border border-border-strong bg-transparent px-3 text-sm focus:border-danger/60 focus:outline-none"
+          />
+          <Button variant="danger" size="sm" disabled={confirm !== "delete" || busy} onClick={remove}>
+            {busy ? <Spinner /> : <Trash2 className="size-4" />} Delete
+          </Button>
+        </div>
+        {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
+      </div>
+    </Panel>
+  );
+}
