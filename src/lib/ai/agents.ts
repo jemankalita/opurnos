@@ -3,9 +3,11 @@ import { profileForPrompt } from "../profile";
 import { truncate } from "../text";
 import type { RuleCheck } from "../eligibility";
 import {
+  REFERRAL_NOTE_MAX,
   EligibilityRulesSchema,
   JudgementSchema,
   ProfileSchema,
+  ReferralSchema,
   TailoredSchema,
   VerifierReportSchema,
   type EligibilityRules,
@@ -13,6 +15,7 @@ import {
   type OpportunityType,
   type Preferences,
   type Profile,
+  type Referral,
   type Tailored,
   type VerifierReport,
 } from "../schemas";
@@ -52,7 +55,7 @@ export async function parseResume(input: {
           return await structured({
             kind: "parse_resume",
             userId: input.userId,
-            system: P.PARSE_RESUME_V2,
+            system: P.PARSE_RESUME_V3,
             schema: ProfileSchema,
             schemaName: "profile",
             user: [
@@ -70,7 +73,7 @@ export async function parseResume(input: {
       return structured({
         kind: "parse_resume",
         userId: input.userId,
-        system: P.PARSE_RESUME_V2,
+        system: P.PARSE_RESUME_V3,
         schema: ProfileSchema,
         schemaName: "profile",
         user: `Resume text:\n"""\n${truncate(input.text, 30000)}\n"""`,
@@ -92,7 +95,7 @@ export async function extractRules(opp: { title: string; org: string; descriptio
         kind: "extract_rules",
         userId: null,
         model,
-        system: P.EXTRACT_RULES_V2,
+        system: P.EXTRACT_RULES_V3,
         schema: EligibilityRulesSchema,
         schemaName: "eligibility_rules",
         temperature: 0,
@@ -211,6 +214,35 @@ export async function verify(input: { userId: string; tailored: Tailored; resume
         user: `RESUME:\n"""\n${truncate(input.resumeText, 20000)}\n"""\n\nTAILORED MATERIALS:\n"""\n${material}\n"""`,
       }),
     () => H.verifyHeuristic(input.tailored, input.resumeText),
+  );
+}
+
+// ---------------- Referral Writer ----------------
+
+export async function draftReferral(input: {
+  userId: string;
+  profile: Profile;
+  prefs: Preferences;
+  opp: { title: string; org: string; description: string };
+}): Promise<AgentResult<Referral>> {
+  const model = env.MODEL_DEFAULT;
+  return withFallback(
+    "referral",
+    model,
+    async () => {
+      const draft = await structured({
+        kind: "referral",
+        userId: input.userId,
+        system: P.REFERRAL_V1,
+        schema: ReferralSchema,
+        schemaName: "referral",
+        temperature: 0.4,
+        user: `PROFILE:\n${profileForPrompt(input.profile, input.prefs)}\n\nROLE: ${input.opp.title} at ${input.opp.org}\n"""\n${truncate(input.opp.description, 4000)}\n"""`,
+      });
+      // The note limit is LinkedIn's, not a style preference; never hand back one it would reject.
+      return { ...draft, note: draft.note.slice(0, REFERRAL_NOTE_MAX) };
+    },
+    () => H.referralHeuristic(input.profile, input.opp),
   );
 }
 

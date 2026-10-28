@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 
 type Education = Profile["education"][number];
 
+const GATE_MAX = 1000;
+
 // Class 10 and 12 live as high-school education entries, so the eligibility check reads them
 // the same way whether the resume parser found them or the student typed them in.
 const SCHOOL = {
@@ -82,6 +84,34 @@ export function AcademicsFields({ profile, onChange, field }: { profile: Profile
             }}
           />
         </label>
+        <div className="grid grid-cols-[1fr_5.5rem] gap-2">
+          <label className="block">
+            <span className="mb-2 block text-[13px] text-muted">GATE score (out of 1000)</span>
+            <input
+              className={cn(field, "font-mono tabular")}
+              inputMode="numeric"
+              placeholder="If you took it"
+              value={profile.gateScore ?? ""}
+              onChange={(e) => {
+                const n = Number(e.target.value.replace(/\D/g, "").slice(0, 4));
+                onChange({ ...profile, gateScore: e.target.value.trim() && n <= GATE_MAX ? n : null });
+              }}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-[13px] text-muted">Year</span>
+            <input
+              className={cn(field, "font-mono tabular")}
+              inputMode="numeric"
+              placeholder="2027"
+              value={profile.gateYear ?? ""}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+                onChange({ ...profile, gateYear: digits.length === 4 ? Number(digits) : null });
+              }}
+            />
+          </label>
+        </div>
       </div>
     </div>
   );

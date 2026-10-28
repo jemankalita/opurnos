@@ -1,13 +1,16 @@
 // Deterministic stand-ins for each agent. They run in demo mode (no MODEL_API_KEY) and as a
 // fallback when a model call fails, so the product degrades instead of breaking.
 import { extractAcademicRules } from "../academics";
+import { extractExperience } from "../experience";
 import { tokenize, truncate } from "../text";
 import type { RuleCheck } from "../eligibility";
 import {
   EMPTY_RULES,
+  REFERRAL_NOTE_MAX,
   type EligibilityRules,
   type Judgement,
   type Profile,
+  type Referral,
   type Tailored,
   type VerifierReport,
 } from "../schemas";
@@ -236,6 +239,7 @@ export function extractRulesHeuristic(text: string): EligibilityRules {
   return {
     ...rules,
     ...academic,
+    ...extractExperience(t),
     gradYearMin: rules.gradYearMin ?? academic.gradYearMin,
     gradYearMax: rules.gradYearMax ?? academic.gradYearMax,
   };
@@ -334,5 +338,36 @@ export function verifyHeuristic(tailored: Tailored, resumeText: string): Verifie
       if (overlap >= 0.45) return { claim, status: "rephrased" as const, source: null, note: "Reworded from your resume." };
       return { claim, status: "unsupported" as const, source: null, note: "Most of this wording isn't backed by your resume." };
     }),
+  };
+}
+
+export function referralHeuristic(profile: Profile, opp: { title: string; org: string; description: string }): Referral {
+  const first = profile.name.split(" ")[0] || profile.name;
+  const edu = [...profile.education].filter((e) => e.level !== "high_school").sort((a, b) => (b.gradYear ?? 0) - (a.gradYear ?? 0))[0];
+  const who = edu ? `${edu.degree} student at ${edu.school}${edu.gradYear ? ` (${edu.gradYear})` : ""}` : profile.headline;
+  const oppTokens = new Set(tokenize(`${opp.title} ${opp.description}`));
+  // The project or role whose words overlap the listing most is the one worth mentioning.
+  const highlights = [
+    ...profile.projects.map((p) => ({ text: `I built ${p.name}: ${p.description.replace(/[.\s]*$/, "")}.`, words: `${p.name} ${p.description} ${p.tech.join(" ")}` })),
+    ...profile.experience.map((e) => ({ text: `I worked as ${e.title} at ${e.org}.`, words: `${e.title} ${e.bullets.join(" ")}` })),
+  ];
+  const best = highlights
+    .map((h) => ({ ...h, score: tokenize(h.words).filter((t) => oppTokens.has(t)).length }))
+    .sort((a, b) => b.score - a.score)[0];
+  const intro = `Hi [Name], I'm ${first}, a ${who}. I'm applying for the ${opp.title} role at ${opp.org}`;
+  const ask = "Would you be open to referring me, or sharing a quick tip about the team?";
+  const note = `${intro} and would value your help. ${ask}`;
+  return {
+    note: note.length <= REFERRAL_NOTE_MAX ? note : `${truncate(intro, REFERRAL_NOTE_MAX - ask.length - 3)}. ${ask}`.slice(0, REFERRAL_NOTE_MAX),
+    message: [
+      `Hi [Name], thanks for connecting!`,
+      ``,
+      `I'm ${first}, a ${who}. ${best ? best.text : ""}`.trim(),
+      ``,
+      `I'm applying for the ${opp.title} role at ${opp.org} ([job link]). If you think I'd be a fit, would you be open to referring me? I'm happy to send my resume, and any advice about the team or the process would help a lot too.`,
+      ``,
+      `Thank you for your time,`,
+      profile.name,
+    ].join("\n"),
   };
 }

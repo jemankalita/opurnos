@@ -10,6 +10,7 @@ export const OPPORTUNITY_TYPES = [
   "conference",
   "grant",
   "competition",
+  "exam",
 ] as const;
 export type OpportunityType = (typeof OPPORTUNITY_TYPES)[number];
 
@@ -72,6 +73,9 @@ export const ProfileSchema = z.object({
   interests: z.array(z.string()).describe("Domains the person seems drawn to, e.g. 'robotics', 'quant'"),
   // Indian campus and off-campus drives cut on this; resumes rarely state it, so users fill it in.
   activeBacklogs: z.number().int().nullable().optional().describe("Uncleared backlogs (failed courses), only if stated"),
+  // PSUs hire engineers on GATE scores; the score is out of 1000 and tied to the exam year.
+  gateScore: z.number().int().nullable().optional().describe("GATE score out of 1000, only if stated"),
+  gateYear: z.number().int().nullable().optional().describe("Year of that GATE exam"),
 });
 export type Profile = z.infer<typeof ProfileSchema>;
 
@@ -84,6 +88,8 @@ export const PreferencesSchema = z.object({
   needsSponsorship: z.boolean(),
   digest: z.enum(["daily", "weekly", "off"]),
   timezone: z.string(),
+  // Language of the digest email; listings themselves stay as their sources wrote them.
+  language: z.enum(["en", "hi"]).optional(),
 });
 export type Preferences = z.infer<typeof PreferencesSchema>;
 
@@ -96,6 +102,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   needsSponsorship: false,
   digest: "daily",
   timezone: "UTC",
+  language: "en",
 };
 
 // ---------- Opportunity eligibility rules (extracted from listings) ----------
@@ -117,6 +124,10 @@ export const EligibilityRulesSchema = z.object({
   marksThroughout: z.boolean().describe("The cutoff also applies to Class 10 and 12 ('60% throughout', 'in X, XII and graduation')"),
   maxBacklogs: z.number().int().nullable().describe("Most active backlogs allowed ('no active backlogs' -> 0)"),
   branches: z.array(z.string()).describe("Allowed branches, e.g. ['CSE', 'IT', 'ECE']; empty = any"),
+  minExperienceYears: z.number().nullable().describe("Minimum years of work experience asked for ('2+ years' -> 2, 'freshers' or '0-1 years' -> 0); null if not stated"),
+  experiencePreferred: z.boolean().describe("The experience is only preferred or a plus, not required"),
+  gateRequired: z.boolean().describe("Selection is through a GATE score ('through GATE 2027', 'valid GATE score')"),
+  gateYear: z.number().int().nullable().describe("The GATE year the listing names, if any"),
   other: z.array(z.string()).describe("Any other stated requirement, verbatim"),
 });
 export type EligibilityRules = z.infer<typeof EligibilityRulesSchema>;
@@ -137,6 +148,10 @@ export const EMPTY_RULES: EligibilityRules = {
   marksThroughout: false,
   maxBacklogs: null,
   branches: [],
+  minExperienceYears: null,
+  experiencePreferred: false,
+  gateRequired: false,
+  gateYear: null,
   other: [],
 };
 
@@ -199,3 +214,13 @@ export const APPLICATION_STATES = [
   "cancelled",
 ] as const;
 export type ApplicationState = (typeof APPLICATION_STATES)[number];
+
+// ---------- Referral request ----------
+
+export const REFERRAL_NOTE_MAX = 300; // LinkedIn's limit for a connection-request note
+
+export const ReferralSchema = z.object({
+  note: z.string().describe(`Connection-request note, at most ${REFERRAL_NOTE_MAX} characters`),
+  message: z.string().describe("Follow-up message once connected, 80-140 words"),
+});
+export type Referral = z.infer<typeof ReferralSchema>;

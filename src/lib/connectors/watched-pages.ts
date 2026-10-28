@@ -4,7 +4,8 @@ import type { OpportunityType } from "../schemas";
 // with no feed or structured data. Each was fetched on 2026-10-28: robots.txt allows it and its
 // date lines are in the server-rendered HTML. `about` is limited to what those pages state.
 // Not watchable: TCS and Infosys careers (Akamai blocks bots), Cognizant and HCLTech TechBee
-// (bot challenge or 403), NCRA-TIFR VSRP (no date lines; it's in the curated list instead).
+// (bot challenge or 403), NCRA-TIFR VSRP (no date lines; it's in the curated list instead),
+// CAT (HTTP 500), UPSC (403), AAI careers (robots.txt disallows), NTPC/BEL/DRDO careers (unreachable).
 
 export type WatchedPage = {
   id: string;
@@ -15,6 +16,8 @@ export type WatchedPage = {
   locations: string[];
   tags: string[];
   about: string;
+  /** On busy pages (a PSU's notice board), only these lines count, so unrelated notices don't flag a change. */
+  focus?: RegExp;
 };
 
 export const WATCHED_PAGES: WatchedPage[] = [
@@ -115,5 +118,80 @@ export const WATCHED_PAGES: WatchedPage[] = [
     about:
       "TCS's off-campus hiring test for freshers. You can apply for jobs in various corporates that accept TCS iON NQT scores. " +
       "The official page lists students passing between 2022 and 2028 as eligible.",
+  },
+
+  // ---- Government programs and PSU hiring (pages fetched 2026-10-29) ----
+  {
+    id: "pm-internship-scheme",
+    url: "https://pminternship.mca.gov.in/login/",
+    title: "PM Internship Scheme",
+    org: "Ministry of Corporate Affairs",
+    type: "internship",
+    locations: ["India"],
+    tags: ["Government", "Stipend"],
+    about:
+      "The Prime Minister's Internship Scheme (PMIS) is part of the Prime Minister's package of five schemes and initiatives for employment, skilling and other opportunities for India's youth. " +
+      "Apply only on the official portal; it is the one place applications are accepted.",
+    // The page is mostly event news; only round and application lines matter.
+    focus: /\bround\s*(\d|i{1,3}\b|iv\b)|\b(apply|applications?|registration|register|last date|deadline|opens?|closes?)\b/i,
+  },
+  {
+    id: "nats-apprenticeship",
+    url: "https://nats.education.gov.in/",
+    title: "NATS Apprenticeship (graduates and diploma holders)",
+    org: "Ministry of Education (NATS 2.0)",
+    type: "internship",
+    locations: ["India"],
+    tags: ["Government", "Apprenticeship", "Stipend"],
+    about:
+      "Paid apprenticeships with employers across India under the National Apprenticeship Training Scheme. " +
+      "Candidates are eligible only after completing e-KYC verification on the NATS 2.0 portal, and the Government's share of the stipend is paid through DBT.",
+  },
+  {
+    id: "powergrid-gate",
+    url: "https://www.powergrid.in/job-opportunities",
+    title: "POWERGRID Engineer Trainee recruitment",
+    org: "POWERGRID",
+    type: "job",
+    locations: ["India"],
+    tags: ["PSU", "Through GATE", "Government"],
+    about: "POWERGRID's recruitment notices. It is recruiting Engineer Trainees-2027 through GATE 2027.",
+    focus: /GATE|गेट|Engineer Trainee|apprentice/i,
+  },
+  {
+    id: "npcil-gate",
+    url: "https://www.npcilcareers.co.in/MainSite/default.aspx",
+    title: "NPCIL Executive Trainee recruitment",
+    org: "Nuclear Power Corporation of India (NPCIL)",
+    type: "job",
+    locations: ["India"],
+    tags: ["PSU", "Through GATE", "Government"],
+    about: "NPCIL's recruitment page (in Hindi). It lists the recruitment of Executive Trainees (2027) through GATE, and apprentice openings at its plant sites.",
+    focus: /GATE|गेट|कार्यकारी प्रशिक्षु|प्रशिक्षु|apprentice/i,
+  },
+  {
+    id: "isro-careers",
+    url: "https://www.isro.gov.in/Careers.html",
+    title: "ISRO Scientist / Engineer recruitment",
+    org: "ISRO",
+    type: "job",
+    locations: ["India"],
+    tags: ["Government", "Space"],
+    about: "ISRO's careers page, where it posts recruitment for scientists, engineers, technicians and administrative staff.",
+    focus: /scientist|engineer|apprentice|online applications/i,
+  },
+
+  // ---- Exams ----
+  {
+    id: "gate-2027",
+    url: "https://gate2027.iitm.ac.in/",
+    title: "GATE 2027",
+    org: "IIT Madras",
+    type: "exam",
+    locations: ["India"],
+    tags: ["Exam", "Engineering", "PSU hiring"],
+    about:
+      "The Graduate Aptitude Test in Engineering 2027, organised by IIT Madras. Scores lead to postgraduate admissions and fellowships, and PSUs such as POWERGRID and NPCIL recruit engineers through them. " +
+      "Registration through DigiLocker is mandatory for Indian nationals.",
   },
 ];

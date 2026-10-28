@@ -7,6 +7,7 @@ import type { ScoutLead } from "./ai/agents";
 import { contentHash, sha1 } from "./text";
 import { mapLimit } from "./concurrency";
 import { pageWatchConnector } from "./page-watch";
+import { withScamTag } from "./scam";
 
 const BATCH = 150;
 
@@ -29,7 +30,7 @@ function toRow(sourceId: string, o: RawOpportunity, now: Date) {
     startsAt: o.startsAt ?? null,
     postedAt: o.postedAt ?? null,
     comp: o.comp ?? null,
-    tags: o.tags.slice(0, 12),
+    tags: withScamTag(o.tags, `${o.title}\n${o.description}`, o.type).slice(0, 12),
     description: o.description,
     // Structured sources ship rules; everyone else gets a cheap heuristic until the LLM pass.
     rules: o.rules ?? extractRulesHeuristic(o.description),

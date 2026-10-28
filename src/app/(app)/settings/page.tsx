@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { spentToday } from "@/lib/ai/client";
+import { calendarFeedUrl } from "@/lib/calendar";
 import { env, isDemoMode } from "@/lib/env";
 import { getProfileRow } from "@/lib/profile";
 import { getSources, getUsage } from "@/lib/queries";
@@ -15,7 +16,7 @@ export default async function SettingsPage() {
   const { userId, email } = await requireUser();
   const profile = await getProfileRow(userId);
   if (!profile?.onboarded) redirect("/start");
-  const [sources, usage, spent] = await Promise.all([getSources(), getUsage(userId), spentToday(userId)]);
+  const [sources, usage, spent, feedUrl] = await Promise.all([getSources(), getUsage(userId), spentToday(userId), calendarFeedUrl(userId)]);
   return (
     <div>
       <header>
@@ -30,6 +31,7 @@ export default async function SettingsPage() {
         demo={isDemoMode}
         budget={{ spent, cap: env.DAILY_LLM_BUDGET_USD, applyCap: env.DAILY_APPLY_CAP }}
         usage={usage}
+        calendarFeedUrl={feedUrl}
         sources={sources.map(({ addedBy, ...s }) => ({
           ...s,
           health: sourceHealth(s),

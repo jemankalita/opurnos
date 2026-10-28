@@ -8,9 +8,12 @@ import { keywordFit, preference, profileKeywords, scoreMatch, urgency, type Feed
 import { tokenize } from "./text";
 import { mapLimit } from "./concurrency";
 import { SENIOR_RE } from "./connectors/types";
+import { isFresherFriendly } from "./experience";
+import { CYBERCRIME_HELP, scamSignals } from "./scam";
 import type { OpportunityType, Preferences, Profile } from "./schemas";
 
 const TRIAGE_KEEP = 150;
+const FRESHER_BOOST = 0.1;
 const DEFAULT_JUDGE_LIMIT = 40;
 
 export type MatchRunResult = {
@@ -111,7 +114,9 @@ export async function runMatching(
   const triaged = candidates
     .filter((c) => !(student && c.type === "job" && SENIOR_RE.test(c.title)))
     .map((c) => {
-      const fit = Math.max(0, Math.min(1, keywordFit(keywords, `${c.title} ${c.tags.join(" ")}`, c.description) + locationBoost(prefs, c.locations, c.remote)));
+      // Students see roles that really take freshers ahead of ones that quietly want experience.
+      const fresher = student && (c.type === "job" || c.type === "internship") && isFresherFriendly(`${c.title}\n${c.description}`) ? FRESHER_BOOST : 0;
+      const fit = Math.max(0, Math.min(1, keywordFit(keywords, `${c.title} ${c.tags.join(" ")}`, c.description) + locationBoost(prefs, c.locations, c.remote) + fresher));
       return { ...c, fit, rank: fit * 0.75 + urgency(c.deadline, now) * 0.25 };
     })
     .sort((a, b) => b.rank - a.rank)
@@ -159,11 +164,27 @@ export async function runMatching(
           await db.update(schema.opportunities).set({ rules, rulesExtracted: true }).where(eq(schema.opportunities.id, c.id));
         }
       }
-      const rulesCheck = checkRules(profile, prefs, rules!, c.deadline, now);
+      const rulesCheck = checkRules(profile, prefs, rules!, c.deadline, now, c.title);
       const matchedKeywords = [...new Set(tokenize(`${c.title} ${c.description}`))].filter((t) => keywordSet.has(t));
-      // Clear disqualifiers don't need a model call.
-      const judgement =
-        rulesCheck.verdict === "ineligible"
+      const feeQuotes = scamSignals(`${c.title}\n${c.description}`, c.type);
+      // A listing that asks applicants for money is a likely scam; never recommend it.
+      const judgement = feeQuotes.length
+        ? {
+            value: {
+              verdict: "ineligible" as const,
+              fit: c.fit,
+              value: 0,
+              why: `Possible scam: this listing asks applicants for money. Genuine employers don't charge fees. ${CYBERCRIME_HELP}`,
+              evidence: [
+                { requirement: "Doesn't ask applicants for money", status: "unmet" as const, listingQuote: feeQuotes[0], profileFact: null },
+                ...rulesCheck.evidence,
+              ],
+              gaps: [],
+            },
+            by: "rules",
+          }
+        : // Clear disqualifiers don't need a model call.
+          rulesCheck.verdict === "ineligible"
           ? {
               value: {
                 verdict: "ineligible" as const,

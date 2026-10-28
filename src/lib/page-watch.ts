@@ -56,14 +56,15 @@ export function toListing(page: WatchedPage, state: WatchState | null, now = new
   };
 }
 
-async function fetchLines(url: string): Promise<string[]> {
-  if (!(await isAllowedByRobots(url))) throw new Error("robots.txt disallows this page");
-  const res = await safeFetch(url);
+async function fetchLines(page: WatchedPage): Promise<string[]> {
+  if (!(await isAllowedByRobots(page.url))) throw new Error("robots.txt disallows this page");
+  const res = await safeFetch(page.url);
   if (res.status >= 400) throw new Error(`HTTP ${res.status}`);
   const lines = signalLines(res.body);
   // An empty result is a layout change or a block page, not "no news"; don't overwrite the baseline.
   if (lines.length === 0) throw new Error("No date or application lines found on the page");
-  return lines;
+  // A focused page may legitimately have no matching lines yet (no round announced).
+  return page.focus ? lines.filter((l) => page.focus!.test(l)) : lines;
 }
 
 /** Re-opens a changed program in the digest for everyone it matched, with what changed as the reason. */
@@ -88,7 +89,7 @@ async function checkPage(page: WatchedPage, now: Date): Promise<CheckResult> {
   const [row] = await db.select().from(schema.pageWatches).where(eq(schema.pageWatches.id, page.id));
   let lines: string[];
   try {
-    lines = await fetchLines(page.url);
+    lines = await fetchLines(page);
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     await db

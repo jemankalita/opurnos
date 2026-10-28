@@ -1,5 +1,6 @@
 import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { getDb, schema } from "./db";
+import { comparePay, monthlyInr } from "./pay";
 import type { MatchStatus, OpportunityType, Verdict } from "./schemas";
 
 export type RadarFilters = { type?: OpportunityType | "all"; verdict?: Verdict | "all"; includeIneligible?: boolean };
@@ -60,6 +61,27 @@ export async function getOpportunityForUser(userId: string, opportunityId: strin
     .orderBy(desc(schema.applications.createdAt))
     .limit(1);
   return { opp, match: match ?? null, application: application ?? null };
+}
+
+const PAY_SAMPLE_LIMIT = 3000;
+
+/** This listing's pay against other open listings of the same type that state rupee pay. */
+export async function getPayComparison(opp: { id: string; type: OpportunityType; comp: string | null }) {
+  if (monthlyInr(opp.comp) === null) return null;
+  const db = await getDb();
+  const rows = await db
+    .select({ comp: schema.opportunities.comp })
+    .from(schema.opportunities)
+    .where(
+      and(
+        eq(schema.opportunities.isActive, true),
+        eq(schema.opportunities.type, opp.type),
+        ne(schema.opportunities.id, opp.id),
+        sql`${schema.opportunities.comp} is not null`,
+      ),
+    )
+    .limit(PAY_SAMPLE_LIMIT);
+  return comparePay(opp.comp, rows.map((r) => r.comp));
 }
 
 export async function getPipeline(userId: string) {

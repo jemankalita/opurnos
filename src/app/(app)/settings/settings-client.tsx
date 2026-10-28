@@ -1,12 +1,12 @@
 "use client";
 
-import { Download, Mail, Trash2 } from "lucide-react";
+import { CalendarPlus, Check, Copy, Download, Mail, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PrefsEditor } from "@/components/prefs-editor";
 import { LocalTime } from "@/components/local-time";
-import { Button, Panel, SectionLabel, Spinner } from "@/components/ui";
+import { Button, buttonClass, Panel, SectionLabel, Spinner } from "@/components/ui";
 import type { Preferences } from "@/lib/schemas";
 import type { SourceHealth } from "@/lib/source-health";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,7 @@ type Props = {
   budget: { spent: number; cap: number; applyCap: number };
   usage: Usage[];
   sources: Source[];
+  calendarFeedUrl: string;
 };
 
 async function call(url: string, init?: RequestInit) {
@@ -53,6 +54,7 @@ export function SettingsClient(props: Props) {
       <aside className="space-y-6">
         <AccountSection email={props.email} resumeName={props.resumeName} />
         <DigestSection lastDigestAt={props.lastDigestAt} />
+        <CalendarSection feedUrl={props.calendarFeedUrl} />
         <UsageSection demo={props.demo} budget={props.budget} usage={props.usage} />
         <DangerSection />
       </aside>
@@ -202,6 +204,41 @@ function DigestSection({ lastDigestAt }: { lastDigestAt: string | null }) {
         {state === "sending" ? <Spinner /> : <Mail className="size-4" />} Send my digest now
       </Button>
       {state !== "idle" && state !== "sending" ? <p className="mt-2 text-xs text-muted">{state}</p> : null}
+    </Panel>
+  );
+}
+
+function CalendarSection({ feedUrl }: { feedUrl: string }) {
+  const [copied, setCopied] = useState(false);
+  const webcal = feedUrl.replace(/^https?:\/\//, "webcal://");
+  const google = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcal)}`;
+  return (
+    <Panel className="p-5">
+      <SectionLabel>Deadlines in your calendar</SectionLabel>
+      <p className="mt-2 text-sm text-muted">
+        Everything you save or start applying to shows up in your calendar at its deadline, with a reminder the day before. It stays in sync on its own.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <a href={google} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "sm")}>
+          <CalendarPlus className="size-4" /> Google Calendar
+        </a>
+        <a href={webcal} className={buttonClass("ghost", "sm")}>
+          Apple / Outlook
+        </a>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            void navigator.clipboard.writeText(feedUrl).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            });
+          }}
+        >
+          {copied ? <Check className="size-4" /> : <Copy className="size-4" />} {copied ? "Copied" : "Copy link"}
+        </Button>
+      </div>
+      <p className="mt-3 text-xs text-faint">The link is private to you: anyone who has it can see your saved deadlines.</p>
     </Panel>
   );
 }

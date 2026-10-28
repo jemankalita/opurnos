@@ -122,12 +122,29 @@ export function academicEvidence(profile: Profile, rules: EligibilityRules): Evi
       profileFact: degree ? [degree.degree, degree.field].filter(Boolean).join(", ") : null,
     });
   }
+
+  if (rules.gateRequired) evidence.push(gateEvidence(profile, rules.gateYear ?? null));
   return evidence;
+}
+
+// GATE scores are tied to the exam year, and PSUs name the year they recruit through.
+function gateEvidence(profile: Profile, year: number | null): Evidence {
+  const requirement = year ? `GATE ${year} score` : "Valid GATE score";
+  const score = profile.gateScore ?? null;
+  if (score === null) return { requirement, status: "unknown", listingQuote: null, profileFact: null };
+  const fact = `GATE ${profile.gateYear ?? ""} score ${score}`.replace(/\s+/g, " ");
+  if (year && profile.gateYear && profile.gateYear !== year) return { requirement, status: "unmet", listingQuote: null, profileFact: fact };
+  return { requirement, status: year && !profile.gateYear ? "unknown" : "met", listingQuote: null, profileFact: fact };
 }
 
 // ---------- Listing side (no-LLM extraction) ----------
 
-type AcademicRules = Pick<EligibilityRules, "minCgpa" | "minPercent" | "marksThroughout" | "maxBacklogs" | "branches" | "gradYearMin" | "gradYearMax">;
+type AcademicRules = Pick<
+  EligibilityRules,
+  "minCgpa" | "minPercent" | "marksThroughout" | "maxBacklogs" | "branches" | "gradYearMin" | "gradYearMax" | "gateRequired" | "gateYear"
+>;
+
+const GATE_RE = /\b(?:through|via|based on|on the basis of)\s+(?:a\s+)?(?:valid\s+)?GATE\b|\bGATE[\s-]*(?:20\d\d\s*)?(?:score|marks)\b|\bvalid GATE\b/i;
 
 const MARKS_CONTEXT = /marks|aggregate|throughout|percentage|10th|12th|class|graduation|academics|ssc|hsc|\bxii?\b|cgpa|degree/i;
 const NOT_MARKS = /hike|off\b|discount|equity|growth|bonus|commission|travel/i;
@@ -176,5 +193,7 @@ export function extractAcademicRules(text: string): AcademicRules {
     branches: branchWindow && !anyBranch ? branchCodes(branchWindow) : [],
     gradYearMin: years.length ? Math.min(...years) : null,
     gradYearMax: years.length ? Math.max(...years) : null,
+    gateRequired: GATE_RE.test(t),
+    gateYear: GATE_RE.test(t) ? Number(t.match(/\bGATE[\s-]*(20\d\d)\b/i)?.[1] ?? NaN) || null : null,
   };
 }

@@ -46,6 +46,7 @@ const TYPE_TONE: Record<string, string> = {
   competition: "bg-sage",
   grant: "bg-clay",
   conference: "bg-sky",
+  exam: "bg-sand",
 };
 
 export function RadarFeed({ items: initial, firstName, lastMatchedAt }: { items: FeedItem[]; firstName: string; lastMatchedAt: string | null }) {

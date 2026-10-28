@@ -64,6 +64,8 @@ describe("extractAcademicRules (Indian drive wording)", () => {
       branches: ["CSE", "IT", "ECE"],
       gradYearMin: 2026,
       gradYearMax: 2027,
+      gateRequired: false,
+      gateYear: null,
     });
   });
 

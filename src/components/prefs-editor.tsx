@@ -147,6 +147,30 @@ export function PrefsEditor({ prefs, onChange }: { prefs: Preferences; onChange:
           ))}
         </div>
       </div>
+      <div>
+        <div className="mb-2 text-sm font-medium">Digest language</div>
+        <div className="inline-flex rounded-md border border-border-strong p-1" role="radiogroup" aria-label="Digest language">
+          {DIGEST_LANGUAGES.map(([code, label]) => (
+            <button
+              key={code}
+              type="button"
+              role="radio"
+              lang={code}
+              aria-checked={(prefs.language ?? "en") === code}
+              onClick={() => set("language", code)}
+              className={cn("h-8 rounded-md px-4 text-sm transition-colors", (prefs.language ?? "en") === code ? "bg-elevated text-text" : "text-muted hover:text-text")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-faint">Listings stay in the language their source wrote them in.</p>
+      </div>
     </div>
   );
 }
+
+const DIGEST_LANGUAGES = [
+  ["en", "English"],
+  ["hi", "हिन्दी"],
+] as const;

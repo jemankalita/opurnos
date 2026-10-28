@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import { ArrowLeft, CheckCircle2, CircleHelp, ExternalLink, XCircle } from "lucide-react";
+import { ArrowLeft, CalendarPlus, CheckCircle2, CircleHelp, ExternalLink, ShieldAlert, XCircle } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Deadline, OrgAvatar, Panel, ScoreRing, SectionLabel, TypePill, VerdictPill } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { getOpportunityForUser } from "@/lib/queries";
+import { formatInr } from "@/lib/pay";
+import { getProfileRow } from "@/lib/profile";
+import { getOpportunityForUser, getPayComparison } from "@/lib/queries";
 import { WEIGHTS } from "@/lib/ranking";
+import { CYBERCRIME_HELP, scamSignals } from "@/lib/scam";
+import { TYPE_LABEL } from "@/lib/utils";
 import { OpportunityActions } from "./opportunity-actions";
+import { ReferralHelper } from "./referral-helper";
 
 export const metadata: Metadata = { title: "Opportunity" };
 
@@ -32,6 +37,10 @@ export default async function OpportunityPage({
   if (!data) notFound();
   const { opp, match, application } = data;
   const place = opp.remote ? "Remote / online" : opp.locations.join(" · ");
+  const feeQuotes = scamSignals(`${opp.title}\n${opp.description}`, opp.type);
+  const [pay, profileRow] = await Promise.all([getPayComparison(opp), getProfileRow(userId)]);
+  const school = profileRow?.parsed?.education.find((e) => e.level !== "high_school")?.school ?? null;
+  const canRefer = (opp.type === "job" || opp.type === "internship") && feeQuotes.length === 0;
 
   return (
     <article>
@@ -54,6 +63,11 @@ export default async function OpportunityPage({
               {opp.comp ? <span className="text-sm text-muted">{opp.comp}</span> : null}
               <span className="hidden text-faint sm:inline">·</span>
               <Deadline deadline={opp.deadline} className="text-sm" />
+              {opp.deadline && opp.isActive ? (
+                <a href={`/api/calendar/opportunity/${opp.id}`} className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
+                  <CalendarPlus className="size-3.5" /> Add to calendar
+                </a>
+              ) : null}
               {!opp.isActive ? <span className="text-sm text-danger">No longer listed</span> : null}
             </div>
           </div>
@@ -68,6 +82,23 @@ export default async function OpportunityPage({
           canApply={opp.isActive}
         />
       </header>
+
+      {feeQuotes.length ? (
+        <div role="alert" className="mt-8 flex gap-3 rounded-lg border border-danger/50 bg-danger/10 p-4 sm:p-5">
+          <ShieldAlert className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden />
+          <div className="min-w-0 text-sm">
+            <p className="font-medium text-text">This listing asks applicants for money. It may be a scam.</p>
+            <p className="mt-1 text-muted">
+              Genuine employers don&apos;t charge for applications, training or joining, and AICTE&apos;s internship portal bans student fees. Don&apos;t pay. {CYBERCRIME_HELP}
+            </p>
+            {feeQuotes.map((q) => (
+              <blockquote key={q} className="mt-2 border-l-2 border-danger/60 pl-3 text-muted">
+                “{q}”
+              </blockquote>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-6">
@@ -185,6 +216,26 @@ export default async function OpportunityPage({
                 })}
               </ul>
               <p className="mt-5 text-xs leading-relaxed text-faint">The score is a transparent weighted sum. Ineligible or closed opportunities are capped at 25.</p>
+            </Panel>
+          ) : null}
+          {pay ? (
+            <Panel className="p-5 text-sm">
+              <SectionLabel>Pay, compared</SectionLabel>
+              <p className="mt-3 font-serif text-2xl">{formatInr(pay.monthly)}/month</p>
+              <p className="mt-1 text-muted">
+                {pay.percentile >= 50 ? `Higher than ${pay.percentile}%` : `Lower than ${100 - pay.percentile}%`} of {pay.samples} open {TYPE_LABEL[opp.type].toLowerCase()}s on
+                Opurnos that state rupee pay. The middle one pays {formatInr(pay.median)}/month.
+              </p>
+              <div className="relative mt-4 h-1.5 rounded-full bg-border" aria-hidden>
+                <span className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent" style={{ left: `${pay.percentile}%` }} />
+              </div>
+              <p className="mt-3 text-xs text-faint">Ranges count at their midpoint and yearly pay is divided by 12.</p>
+            </Panel>
+          ) : null}
+          {canRefer ? (
+            <Panel className="p-5">
+              <SectionLabel>Ask for a referral</SectionLabel>
+              <ReferralHelper opportunityId={opp.id} org={opp.org} school={school} />
             </Panel>
           ) : null}
           <Panel className="p-5 text-sm">

@@ -56,7 +56,7 @@ export async function sendDigest(userId: string): Promise<{ sent: boolean; count
   if (!user || !profile) return { sent: false, count: 0 };
   const { items, opportunityIds } = await buildDigest(userId);
   if (items.length === 0) return { sent: false, count: 0 };
-  const { subject, html } = digestEmail(profile.parsed?.name ?? "", items);
+  const { subject, html } = digestEmail(profile.parsed?.name ?? "", items, profile.prefs.language ?? "en");
   await sendEmail({ to: user.email, subject, html });
   const now = new Date();
   await db

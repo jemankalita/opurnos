@@ -36,6 +36,7 @@ export const TYPE_LABEL: Record<string, string> = {
   conference: "Conference",
   grant: "Grant",
   competition: "Competition",
+  exam: "Exam",
 };
 
 export const VERDICT_LABEL: Record<string, string> = {

@@ -1,4 +1,5 @@
 import { academicEvidence } from "./academics";
+import { experienceEvidence } from "./experience";
 import { EMPTY_RULES, type EligibilityRules, type Evidence, type Preferences, type Profile, type Verdict } from "./schemas";
 
 export type RuleCheck = {
@@ -35,6 +36,7 @@ export function checkRules(
   storedRules: EligibilityRules,
   deadline: Date | null,
   now = new Date(),
+  title = "",
 ): RuleCheck {
   // Rules stored before a field existed (e.g. the academic cutoffs) read as "no restriction".
   const rules: EligibilityRules = { ...EMPTY_RULES, ...storedRules };
@@ -105,6 +107,7 @@ export function checkRules(
   }
 
   evidence.push(...academicEvidence(profile, rules));
+  evidence.push(...experienceEvidence(profile, rules, title, now));
 
   const verdict = evidence.some((e) => e.status === "unmet")
     ? "ineligible"

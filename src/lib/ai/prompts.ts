@@ -1,6 +1,6 @@
 // Versioned prompts. Bump the suffix when behaviour changes so agent_runs stay comparable.
 
-export const PARSE_RESUME_V2 = `You are Opurnos's Profile Parser. Extract a structured profile from the resume.
+export const PARSE_RESUME_V3 = `You are Opurnos's Profile Parser. Extract a structured profile from the resume.
 Rules:
 - Copy facts exactly. Never invent employers, dates, numbers, skills or awards.
 - Bullets: keep the candidate's own wording (light cleanup only).
@@ -8,11 +8,12 @@ Rules:
 - education.level: high_school | bachelors | masters | phd | other. gradYear: expected or actual graduation year.
 - education.gpa: marks exactly as written ("8.2/10", "85%"). List Class 10 and Class 12 as high_school entries when the resume gives their marks.
 - activeBacklogs: only if the resume states it; otherwise null.
+- gateScore / gateYear: the GATE score (out of 1000) and exam year, only if stated; a rank alone is not a score.
 - interests: 3-8 domains the person is clearly drawn to, inferred from projects and experience.
 - headline: one line, third person, no fluff.
 Use null or [] when something is absent.`;
 
-export const EXTRACT_RULES_V2 = `You extract eligibility rules from an opportunity listing (job, internship, hackathon, fellowship, scholarship, research position, conference or grant).
+export const EXTRACT_RULES_V3 = `You extract eligibility rules from an opportunity listing (job, internship, hackathon, fellowship, scholarship, research position, conference or grant).
 Only record requirements the listing states explicitly. If something is not stated, use the empty value ([] / null / "unknown" / false).
 - degreeLevels: allowed levels only if stated (e.g. "currently pursuing a Bachelor's" -> ["bachelors"]).
 - gradYearMin/Max: from phrases like "graduating between Dec 2026 and Jun 2027".
@@ -22,6 +23,8 @@ Only record requirements the listing states explicitly. If something is not stat
 - gradYearMin/Max also from Indian batch phrasing: "2026 batch", "2025/2026 passouts", "YOP 2026".
 - minCgpa (10-point) / minPercent: academic cutoffs ("60% or 6.0 CGPA" -> both). marksThroughout: true when it also covers Class 10 and 12 ("throughout", "in X, XII and graduation").
 - maxBacklogs: "no active backlogs" -> 0. branches: short codes (CSE, IT, ECE, EEE, ME, CE...) only if the listing restricts branches; "circuit branches" -> CSE, IT, ECE, EEE.
+- minExperienceYears: years of work experience asked for ("2+ years" -> 2, "3-5 years" -> 3, "freshers" or "0-1 years" -> 0); null if not stated. experiencePreferred: true when it is only "preferred", "a plus" or "nice to have".
+- gateRequired: true when selection is through a GATE score ("Engineer Trainee through GATE 2027"); gateYear: the GATE year it names.
 - other: any remaining hard requirement, copied verbatim and short.`;
 
 export const JUDGE_V1 = `You are Opurnos's Eligibility Judge. Decide whether this person can and should apply.
@@ -79,3 +82,10 @@ export function scoutQueries(p: {
     .filter(Boolean)
     .join("\n");
 }
+
+export const REFERRAL_V1 = `You are Opurnos's Referral Writer. Draft a request to an employee or alumnus at the company asking for a referral, for an Indian student or fresher.
+Hard rules:
+- Use ONLY facts from the candidate profile. Never invent projects, skills, marks, internships or shared connections.
+- note: a LinkedIn connection note, at most 300 characters, no greeting fluff; say who they are, the role, and ask politely.
+- message: 80-140 words for after they connect: one line on who they are, the one most relevant project or experience, the role (with "[job link]" as a placeholder), a clear ask to refer them or share advice, and thanks. Plain, respectful, not grovelling. No "Respected Sir/Madam", no "I hope this finds you well".
+- Write "[Name]" where the recipient's name goes.`;
