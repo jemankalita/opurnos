@@ -1,6 +1,6 @@
 /**
  * Live-model code paths against a local server that speaks the OpenAI wire format
- * (what the Meta Model API exposes). Exercises the real SDK, request shapes and fallbacks.
+ * (OpenAI's Chat Completions and Responses APIs). Exercises the real SDK, request shapes and fallbacks.
  */
 import { mkdtempSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:http";
@@ -39,7 +39,7 @@ process.env.DATA_DIR = dataDir;
 process.env.DATABASE_URL = "";
 process.env.MODEL_API_KEY = "test-key";
 process.env.MODEL_BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`;
-process.env.DAILY_LLM_BUDGET_USD = "1";
+process.env.PRO_DAILY_AI_USD = "1";
 (globalThis as { __opurnosDb?: unknown }).__opurnosDb = undefined;
 
 const agents = await import("@/lib/ai/agents");
@@ -65,14 +65,14 @@ afterAll(() => {
 });
 
 describe("structured()", () => {
-  it("uses strict json_schema on the contributor model for public listings and logs cost", async () => {
+  it("uses strict json_schema on the public model for public listings and logs cost", async () => {
     replies.push(chat(RULES_JSON));
     const result = await agents.extractRules(opp);
-    expect(result.by).toBe("muse-spark-1.3-contributor");
+    expect(result.by).toBe("gpt-6-luna");
     expect(result.value).toMatchObject({ degreeLevels: ["bachelors"], studentsOnly: true });
     const req = seen[0].body as { model: string; response_format: { type: string; json_schema: { strict: boolean; schema: { additionalProperties: boolean } } } };
     expect(seen[0].path).toBe("/v1/chat/completions");
-    expect(req.model).toBe("muse-spark-1.3-contributor");
+    expect(req.model).toBe("gpt-6-luna");
     expect(req.response_format.type).toBe("json_schema");
     expect(req.response_format.json_schema.strict).toBe(true);
     expect(req.response_format.json_schema.schema.additionalProperties).toBe(false);
@@ -123,7 +123,7 @@ describe("agents on the live path", () => {
   it("retries resume parsing with text when the PDF part is refused", async () => {
     replies.push(apiError(400, "file parts unsupported"), apiError(400, "still no"), chat(JSON.stringify(profile)));
     const result = await agents.parseResume({ userId: "u-pdf", text: "Asha Rao resume", pdfBase64: "JVBERi0=" });
-    expect(result.by).toBe("muse-spark-1.3");
+    expect(result.by).toBe("gpt-6.1-terra");
     expect(JSON.stringify(seen[2].body.messages)).toContain("Asha Rao resume");
   });
 
@@ -142,7 +142,7 @@ describe("agents on the live path", () => {
       fit: 0.6,
       matchedKeywords: ["ml"],
     });
-    expect(j).toMatchObject({ by: "muse-spark-1.3", value: { verdict: "likely" } });
+    expect(j).toMatchObject({ by: "gpt-6.1-terra", value: { verdict: "likely" } });
     const t = await agents.tailor({ userId: "u1", profile, resumeText: "resume", opp: { ...opp, type: "fellowship" } });
     expect(t.value.coverLetter).toBe("Dear Lab");
     const v = await agents.verify({ userId: "u1", tailored: t.value, resumeText: "resume" });
@@ -198,7 +198,25 @@ describe("budget guard", () => {
   });
 
   it("estimates cost from token counts with a default price for unknown models", () => {
-    expect(client.estimateCost("muse-spark-1.3", 1_000_000, 0)).toBeCloseTo(0.6);
-    expect(client.estimateCost("unknown-model", 1_000_000, 1_000_000)).toBeCloseTo(5);
+    expect(client.estimateCost("gpt-6.1-terra", 1_000_000, 0)).toBeCloseTo(1);
+    expect(client.estimateCost("gpt-6-luna", 1_000_000, 1_000_000)).toBeCloseTo(0.6);
+    expect(client.estimateCost("unknown-model", 1_000_000, 1_000_000)).toBeCloseTo(12);
+  });
+});
+
+describe("createChat", () => {
+  it("drops a sampling parameter the model rejects, retries, and remembers it", async () => {
+    replies.push(apiError(400, "Unsupported parameter: 'temperature' is not supported with this model."), chat("hi"), chat("again"));
+    const first = await client.createChat({ model: "strict-model", temperature: 0.2, messages: [{ role: "user", content: "x" }] });
+    expect(first.choices[0].message.content).toBe("hi");
+    expect(seen.map((s) => "temperature" in s.body)).toEqual([true, false]);
+    await client.createChat({ model: "strict-model", temperature: 0.2, messages: [{ role: "user", content: "y" }] });
+    expect("temperature" in seen[2].body).toBe(false);
+  });
+
+  it("doesn't retry other bad requests", async () => {
+    replies.push(apiError(400, "Invalid 'messages': empty."));
+    await expect(client.createChat({ model: "m2", temperature: 0, messages: [] })).rejects.toThrow(/messages/);
+    expect(seen).toHaveLength(1);
   });
 });

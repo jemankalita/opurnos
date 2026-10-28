@@ -7,6 +7,7 @@ import { upsertScoutLeads } from "./ingest";
 import { keywordFit, preference, profileKeywords, scoreMatch, urgency, type FeedbackStats } from "./ranking";
 import { tokenize } from "./text";
 import { mapLimit } from "./concurrency";
+import { getPlan, planLimits } from "./plans";
 import { SENIOR_RE } from "./connectors/types";
 import { isFresherFriendly } from "./experience";
 import { CYBERCRIME_HELP, scamSignals } from "./scam";
@@ -70,7 +71,9 @@ export async function runMatching(
   const prefs = profileRow.prefs;
   const result: MatchRunResult = { candidates: 0, triaged: 0, judged: 0, rescored: 0, scouted: 0, budgetHit: false };
 
-  if (opts.withScout) {
+  const limits = planLimits(await getPlan(userId, now));
+
+  if (opts.withScout && limits.webScout) {
     try {
       result.scouted = await upsertScoutLeads(await scout({ userId, profile, prefs }));
     } catch (err) {
@@ -204,6 +207,7 @@ export async function runMatching(
               rulesCheck,
               fit: c.fit,
               matchedKeywords,
+              useModel: limits.aiJudging,
             });
       const j = judgement.value;
       const verdict = reconcileVerdict(j.verdict, rulesCheck);

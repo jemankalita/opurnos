@@ -1,10 +1,12 @@
 import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { Logo } from "@/components/brand";
 import { EvidenceExhibit, GateExhibit, VerifierExhibit, WeightsTable } from "@/components/landing/exhibits";
 import { RevealObserver } from "@/components/landing/reveal";
 import { Postmark, Stamp } from "@/components/landing/stamp";
 import { type SheetItem, type SheetKind, StampSheet } from "@/components/landing/stamp-sheet";
+import { LegalLinks } from "@/components/legal-links";
 import { Art, type ArtName, ButtonLink } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { env } from "@/lib/env";
@@ -253,6 +255,9 @@ function SiteHeader({ cta, signedIn }: { cta: { href: string }; signedIn: boolea
         <a href="#letter" className={link}>
           The letter
         </a>
+        <Link href="/pricing" className={link}>
+          Pricing
+        </Link>
       </nav>
       <ButtonLink href={cta.href} size="sm" className="ml-auto md:ml-0">
         {signedIn ? "Open radar" : "Sign in"}
@@ -400,9 +405,9 @@ function SiteFooter() {
           <div>
             <Logo />
             <p className="mt-4 max-w-xs text-muted">
-              Built on Meta models: {env.MODEL_DEFAULT} for reading and judging, {env.MODEL_AGENT} for the browser agent. Listings belong to their publishers; every card
-              links to the original.
+              Free to use, with Pro for the AI on top. Listings belong to their publishers; every card links to the original.
             </p>
+            <LegalLinks className="mt-5" />
           </div>
           <div>
             <p className="label">Pictures</p>

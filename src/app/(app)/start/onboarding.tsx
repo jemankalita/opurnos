@@ -172,7 +172,7 @@ function ResumeStep({ onSubmit, existing, onCancel }: { onSubmit: (f: FormData) 
         Start with <em className="font-serif normal-case italic">your</em> resume
       </h1>
       <p className="mt-4 max-w-xl text-[16px] text-muted">
-        Muse Spark reads it once, including layout, tables and columns. Every claim we make later is checked against it, so nothing gets invented.
+        The model reads it once, including layout, tables and columns. Every claim we make later is checked against it, so nothing gets invented.
       </p>
       {!paste ? (
         <div
@@ -318,7 +318,7 @@ function ProfileStep({
       </div>
       {parsedBy === "rules" ? (
         <p className="mt-5 border-l-2 border-signal py-1 pl-3 text-[13px] text-muted">
-          Parsed with offline rules (demo mode). With a Meta model key, Muse Spark reads the PDF directly and gets much more right.
+          Parsed with offline rules because no OpenAI key is set on this server. With one, the model reads the PDF directly and gets much more right.
         </p>
       ) : null}
 

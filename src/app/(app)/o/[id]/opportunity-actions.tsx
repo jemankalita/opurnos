@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, Bookmark, BookmarkCheck, ExternalLink, ThumbsDown, Wand2 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button, buttonClass, Spinner } from "@/components/ui";
@@ -100,7 +101,12 @@ export function OpportunityActions({
       {starting ? <p className="text-xs text-muted">Drafting from your resume, then checking every claim. About 20 seconds.</p> : null}
       {error ? (
         <p role="alert" className="text-sm text-danger">
-          {error}
+          {error}{" "}
+          {error.includes("Opurnos Pro") ? (
+            <Link href="/pricing" className="font-medium underline">
+              See plans
+            </Link>
+          ) : null}
         </p>
       ) : null}
     </div>

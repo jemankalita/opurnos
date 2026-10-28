@@ -25,8 +25,15 @@ import * as P from "./prompts";
 
 export type AgentResult<T> = { value: T; by: string };
 
-async function withFallback<T>(kind: string, model: string, run: () => Promise<T>, fallback: () => T): Promise<AgentResult<T>> {
-  if (isDemoMode) return { value: fallback(), by: "rules" };
+async function withFallback<T>(
+  kind: string,
+  model: string,
+  run: () => Promise<T>,
+  fallback: () => T,
+  useModel = true,
+): Promise<AgentResult<T>> {
+  // useModel is false when the account's plan doesn't include the AI version of this step.
+  if (isDemoMode || !useModel) return { value: fallback(), by: "rules" };
   try {
     return { value: await run(), by: model };
   } catch (err) {
@@ -49,7 +56,7 @@ export async function parseResume(input: {
     "parse_resume",
     model,
     async () => {
-      // Muse Spark reads PDFs natively (layout, columns, tables); fall back to extracted text.
+      // The model reads PDFs natively (layout, columns, tables); fall back to extracted text.
       if (input.pdfBase64) {
         try {
           return await structured({
@@ -83,7 +90,7 @@ export async function parseResume(input: {
   );
 }
 
-// ---------------- Extractor (public data → contributor model) ----------------
+// ---------------- Extractor (public data only → the cheap public model) ----------------
 
 export async function extractRules(opp: { title: string; org: string; description: string }): Promise<AgentResult<EligibilityRules>> {
   const model = env.MODEL_PUBLIC;
@@ -109,6 +116,8 @@ export async function extractRules(opp: { title: string; org: string; descriptio
 
 export type JudgeInput = {
   userId: string;
+  /** False on the Free plan: judge with rules only. */
+  useModel?: boolean;
   profile: Profile;
   prefs: Preferences;
   opp: {
@@ -163,6 +172,7 @@ export async function judge(input: JudgeInput): Promise<AgentResult<Judgement>> 
         hasPrize: Boolean(opp.comp),
         matchedKeywords: input.matchedKeywords,
       }),
+    input.useModel ?? true,
   );
 }
 
@@ -221,6 +231,7 @@ export async function verify(input: { userId: string; tailored: Tailored; resume
 
 export async function draftReferral(input: {
   userId: string;
+  useModel?: boolean;
   profile: Profile;
   prefs: Preferences;
   opp: { title: string; org: string; description: string };
@@ -243,6 +254,7 @@ export async function draftReferral(input: {
       return { ...draft, note: draft.note.slice(0, REFERRAL_NOTE_MAX) };
     },
     () => H.referralHeuristic(input.profile, input.opp),
+    input.useModel ?? true,
   );
 }
 

@@ -4,14 +4,16 @@ const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.string().url().default("http://localhost:3000"),
 
-  // Meta Model API (OpenAI-compatible). Empty key => demo mode with heuristic fallbacks.
+  // OpenAI (or any OpenAI-compatible endpoint). Empty key => rules-only mode with heuristic fallbacks.
   MODEL_API_KEY: z.string().optional(),
-  MODEL_BASE_URL: z.string().url().default("https://api.meta.ai/v1"),
-  MODEL_DEFAULT: z.string().default("muse-spark-1.3"),
-  // Contributor mode is cheaper but may be used for training: public opportunity data only.
-  MODEL_PUBLIC: z.string().default("muse-spark-1.3-contributor"),
-  MODEL_AGENT: z.string().default("muse-wonder-1.0"),
-  MODEL_TRANSCRIBE: z.string().default("muse-voice-transcribe-1.0"),
+  OPENAI_API_KEY: z.string().optional(),
+  MODEL_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
+  // Reading resumes, judging eligibility, tailoring, verifying, referrals and web search.
+  MODEL_DEFAULT: z.string().default("gpt-6.1-terra"),
+  // High-volume rule extraction from public listings; no user data is ever sent with it.
+  MODEL_PUBLIC: z.string().default("gpt-6-luna"),
+  // The browser agent that fills application forms (vision + tools).
+  MODEL_AGENT: z.string().default("gpt-6.1-sol"),
 
   // Postgres in production (Supabase/Neon). Empty => embedded PGlite at DATA_DIR.
   DATABASE_URL: z.string().optional(),
@@ -31,8 +33,23 @@ const EnvSchema = z.object({
   BROWSER_EXECUTABLE: z.string().optional(),
   BROWSER_HEADLESS: z.enum(["true", "false"]).default("true"),
 
-  DAILY_LLM_BUDGET_USD: z.coerce.number().positive().default(0.5),
-  DAILY_APPLY_CAP: z.coerce.number().int().positive().default(10),
+  // Billing (Razorpay subscriptions). Empty keys => billing is off and every account gets Pro (self-hosting, development).
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  RAZORPAY_PRO_PLAN_ID: z.string().optional(),
+  PRO_PRICE_INR: z.coerce.number().int().positive().default(199),
+
+  // Per-plan guardrails: daily AI spend per account (USD) and browser applications per day.
+  FREE_DAILY_AI_USD: z.coerce.number().nonnegative().default(0.05),
+  PRO_DAILY_AI_USD: z.coerce.number().positive().default(0.5),
+  PRO_DAILY_APPLY_CAP: z.coerce.number().int().positive().default(10),
+
+  // Shown on the legal and contact pages (payment providers require them).
+  COMPANY_NAME: z.string().default("Opurnos"),
+  SUPPORT_EMAIL: z.string().default("support@opurnos.app"),
+  COMPANY_ADDRESS: z.string().optional(),
+  GRIEVANCE_OFFICER: z.string().optional(),
 });
 
 const blankToUndefined = Object.fromEntries(
@@ -48,6 +65,7 @@ const DEV_AUTH_SECRET = "dev-only-secret-change-me-in-production-0123456789";
 
 export const env = {
   ...parsed.data,
+  MODEL_API_KEY: parsed.data.MODEL_API_KEY ?? parsed.data.OPENAI_API_KEY,
   AUTH_SECRET: parsed.data.AUTH_SECRET ?? DEV_AUTH_SECRET,
 };
 
@@ -61,3 +79,4 @@ export function authSecret(): string {
 
 export const isDemoMode = !env.MODEL_API_KEY;
 export const isDev = env.NODE_ENV !== "production";
+export const isBillingEnabled = Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET && env.RAZORPAY_PRO_PLAN_ID);

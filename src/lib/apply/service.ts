@@ -5,6 +5,7 @@ import { and, desc, eq, gte, max, sql } from "drizzle-orm";
 import { getDb, schema } from "../db";
 import { env } from "../env";
 import { HttpError } from "../auth";
+import { requireFeature } from "../plans";
 import { tailor, verify } from "../ai/agents";
 import type { ApplicationState, Tailored } from "../schemas";
 import { closeSession, getSession, keepSession, launchBrowser, screenshot, snapshotFields, submitForm } from "./browser";
@@ -59,6 +60,7 @@ export async function startApplication(userId: string, opportunityId: string) {
     .orderBy(desc(schema.applications.createdAt))
     .limit(1);
   if (existing && !["failed", "cancelled"].includes(existing.state)) return existing.id;
+  const { dailyApplications } = await requireFeature(userId, "applyAgent");
 
   const since = new Date();
   since.setUTCHours(0, 0, 0, 0);
@@ -66,8 +68,8 @@ export async function startApplication(userId: string, opportunityId: string) {
     .select({ count: sql<number>`count(*)` })
     .from(schema.applications)
     .where(and(eq(schema.applications.userId, userId), gte(schema.applications.createdAt, since)));
-  if (Number(count) >= env.DAILY_APPLY_CAP) {
-    throw new HttpError(429, `You've started ${env.DAILY_APPLY_CAP} applications today. Quality beats volume, so come back tomorrow.`);
+  if (Number(count) >= dailyApplications) {
+    throw new HttpError(429, `You've started ${dailyApplications} applications today. Quality beats volume, so come back tomorrow.`);
   }
 
   const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, opportunityId));
@@ -100,6 +102,7 @@ export async function startApplication(userId: string, opportunityId: string) {
 export async function saveMaterials(userId: string, applicationId: string, tailored: Tailored) {
   const { app } = await loadOwned(userId, applicationId);
   if (app.state !== "review_materials") throw new HttpError(409, "Materials can only be edited before the agent starts.");
+  await requireFeature(userId, "applyAgent");
   const db = await getDb();
   const [profile] = await db.select().from(schema.profiles).where(eq(schema.profiles.userId, userId));
   // Edits are re-verified: the gate applies to the user's wording too.

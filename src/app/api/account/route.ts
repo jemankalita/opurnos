@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { destroySession, requireApiUser } from "@/lib/auth";
+import { cancelBeforeDeletion } from "@/lib/billing/razorpay";
 import { getDb, schema } from "@/lib/db";
 import { handle, ok } from "@/lib/http";
 import { deactivateSource } from "@/lib/ingest";
@@ -7,6 +8,8 @@ import { deactivateSource } from "@/lib/ingest";
 /** Deletes the account and everything tied to it (profile, resume, matches, applications, run logs). */
 export const DELETE = handle(async () => {
   const { userId } = await requireApiUser();
+  // Fails (and keeps the account) if Razorpay can't be reached, so a deleted user is never billed again.
+  await cancelBeforeDeletion(userId);
   const db = await getDb();
   await db.delete(schema.agentRuns).where(eq(schema.agentRuns.userId, userId));
   // Websites they added go with the account (FK cascade); take those listings off the radar first.

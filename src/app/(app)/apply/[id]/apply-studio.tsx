@@ -126,7 +126,7 @@ export function ApplyStudio({ applicationId, applyUrl, host }: { applicationId: 
       <div className="mt-8">
         <AnimatePresence mode="wait">
           <motion.div key={stageKey(view.state)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-            {view.state === "drafting" && <Working title="Tailoring your materials" body="Muse Spark is drafting from your resume, then a separate verifier checks every claim." steps={steps} />}
+            {view.state === "drafting" && <Working title="Tailoring your materials" body="The model is drafting from your resume, then a separate verifier checks every claim." steps={steps} />}
             {view.state === "review_materials" && view.tailored && view.verifier && (
               <Materials view={view as View & { tailored: Tailored; verifier: VerifierReport }} busy={busy} host={host} onSave={(t) => act({ action: "save", tailored: t })} onApprove={(c) => act({ action: "approve", acceptedClaims: c })} />
             )}
@@ -358,7 +358,7 @@ function AgentView({ shot, steps, host, live, title }: { shot: string | null; st
       <Panel className="flex max-h-[600px] flex-col p-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <Bot className="size-4 text-text" />
-          <span className="text-sm font-medium">Muse Wonder · action log</span>
+          <span className="text-sm font-medium">Apply agent · action log</span>
           {live ? <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-eligible"><span className="size-1.5 caret rounded-full bg-eligible" /> live</span> : null}
         </div>
         <ol ref={logRef} className="scrollbar-thin flex-1 space-y-2.5 overflow-y-auto p-4" aria-live="polite">

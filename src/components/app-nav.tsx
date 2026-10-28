@@ -77,8 +77,8 @@ export function AppNav({ email, demo }: { email: string; demo: boolean }) {
           </nav>
           <div className="ml-auto flex items-center gap-1">
             {demo ? (
-              <span className="mr-2 hidden font-mono text-[11px] uppercase tracking-[0.1em] text-label lg:inline" title="Agents use built-in rules until a Meta model key is set.">
-                Demo mode
+              <span className="mr-2 hidden font-mono text-[11px] uppercase tracking-[0.1em] text-label lg:inline" title="Agents use built-in rules until an OpenAI API key is set.">
+                Rules-only
               </span>
             ) : null}
             <span className="mr-1 hidden max-w-[180px] truncate text-[13px] text-faint lg:inline" title={email}>

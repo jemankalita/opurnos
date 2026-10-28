@@ -10,6 +10,7 @@ import { Button, buttonClass, Panel, SectionLabel, Spinner } from "@/components/
 import type { Preferences } from "@/lib/schemas";
 import type { SourceHealth } from "@/lib/source-health";
 import { cn } from "@/lib/utils";
+import { PlanSection, type Billing } from "./plan-section";
 import { WatchWebsite } from "./watch-website";
 
 type Source = {
@@ -35,6 +36,7 @@ type Props = {
   usage: Usage[];
   sources: Source[];
   calendarFeedUrl: string;
+  billing: Billing;
 };
 
 async function call(url: string, init?: RequestInit) {
@@ -52,6 +54,7 @@ export function SettingsClient(props: Props) {
         <SourcesSection sources={props.sources} />
       </div>
       <aside className="space-y-6">
+        <PlanSection billing={props.billing} />
         <AccountSection email={props.email} resumeName={props.resumeName} />
         <DigestSection lastDigestAt={props.lastDigestAt} />
         <CalendarSection feedUrl={props.calendarFeedUrl} />
@@ -248,7 +251,7 @@ function UsageSection({ demo, budget, usage }: Pick<Props, "demo" | "budget" | "
   return (
     <Panel className="p-5">
       <SectionLabel>AI usage</SectionLabel>
-      {demo ? <p className="mt-2 rounded-md border border-text/25 bg-elevated px-3 py-2 text-xs">Demo mode: no model key is set, so rules and heuristics stand in for Muse Spark.</p> : null}
+      {demo ? <p className="mt-2 rounded-md border border-text/25 bg-elevated px-3 py-2 text-xs">Rules-only mode: no OpenAI key is set on this server, so rules and heuristics stand in for the model.</p> : null}
       <div className="mt-3 flex items-baseline justify-between text-sm">
         <span className="text-muted">Today</span>
         <span className="font-mono tabular">
@@ -258,7 +261,9 @@ function UsageSection({ demo, budget, usage }: Pick<Props, "demo" | "budget" | "
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border">
         <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
       </div>
-      <p className="mt-2 text-xs text-faint">Up to {budget.applyCap} agent applications per day.</p>
+      <p className="mt-2 text-xs text-faint">
+        {budget.applyCap ? `Up to ${budget.applyCap} agent applications per day.` : "The apply agent is part of Pro."}
+      </p>
       {usage.length ? (
         <table className="mt-4 w-full text-xs">
           <thead className="text-left text-faint">

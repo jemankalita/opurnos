@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { spentToday } from "@/lib/ai/client";
 import { calendarFeedUrl } from "@/lib/calendar";
-import { env, isDemoMode } from "@/lib/env";
+import { env, isBillingEnabled, isDemoMode } from "@/lib/env";
+import { getPlan, getSubscription, planLimits } from "@/lib/plans";
 import { getProfileRow } from "@/lib/profile";
 import { getSources, getUsage } from "@/lib/queries";
 import { DEFAULT_PREFERENCES } from "@/lib/schemas";
@@ -16,7 +17,15 @@ export default async function SettingsPage() {
   const { userId, email } = await requireUser();
   const profile = await getProfileRow(userId);
   if (!profile?.onboarded) redirect("/start");
-  const [sources, usage, spent, feedUrl] = await Promise.all([getSources(), getUsage(userId), spentToday(userId), calendarFeedUrl(userId)]);
+  const [sources, usage, spent, feedUrl, plan, subscription] = await Promise.all([
+    getSources(),
+    getUsage(userId),
+    spentToday(userId),
+    calendarFeedUrl(userId),
+    getPlan(userId),
+    getSubscription(userId),
+  ]);
+  const limits = planLimits(plan);
   return (
     <div>
       <header>
@@ -29,7 +38,15 @@ export default async function SettingsPage() {
         resumeName={profile.resumeFileName}
         lastDigestAt={profile.lastDigestAt?.toISOString() ?? null}
         demo={isDemoMode}
-        budget={{ spent, cap: env.DAILY_LLM_BUDGET_USD, applyCap: env.DAILY_APPLY_CAP }}
+        budget={{ spent, cap: limits.dailyAiUsd, applyCap: limits.dailyApplications }}
+        billing={{
+          enabled: isBillingEnabled,
+          plan,
+          priceInr: env.PRO_PRICE_INR,
+          status: subscription?.status ?? null,
+          periodEnd: subscription?.currentPeriodEnd?.toISOString() ?? null,
+          cancelAtCycleEnd: subscription?.cancelAtCycleEnd ?? false,
+        }}
         usage={usage}
         calendarFeedUrl={feedUrl}
         sources={sources.map(({ addedBy, ...s }) => ({

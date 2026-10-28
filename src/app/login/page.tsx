@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/brand";
 import { Art } from "@/components/ui";
@@ -30,7 +31,17 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           ) : null}
           <LoginForm next={next?.startsWith("/") ? next : undefined} />
         </div>
-        <p className="text-[13px] text-faint">Your resume stays yours. Nothing is submitted anywhere without your approval.</p>
+        <p className="text-[13px] text-faint">
+          Your resume stays yours. Nothing is submitted anywhere without your approval. By signing in you agree to our{" "}
+          <Link href="/terms" className="underline">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
       <div className="hidden items-center justify-center bg-sky/45 lg:flex">
         <div className="stamp h-[460px] w-[340px]" style={SKY_STAMP}>

@@ -3,19 +3,25 @@ import { z } from "zod";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { env, isDemoMode } from "../env";
 import { getDb, schema } from "../db";
+import { getPlan, planLimits } from "../plans";
 
-// Estimated USD per 1M tokens. The pricing page was unavailable while building;
-// update these from the Billing page. Used only for budgets and the cost panel.
+// USD per 1M tokens, standard tier, from OpenAI's pricing page (checked 2026-10-29).
+// Used for per-plan budgets and the usage panel, not for billing.
 const PRICING: Record<string, { in: number; out: number }> = {
-  "muse-spark-1.3": { in: 0.6, out: 2.4 },
-  "muse-spark-1.3-contributor": { in: 0.3, out: 1.2 },
-  "muse-wonder-1.0": { in: 1.5, out: 6 },
+  "gpt-6-astra": { in: 10, out: 50 },
+  "gpt-6.1-sol": { in: 2, out: 10 },
+  "gpt-6.1-terra": { in: 1, out: 5 },
+  "gpt-6-luna": { in: 0.1, out: 0.5 },
+  "gpt-5.4-mini": { in: 0.75, out: 4.5 },
+  "gpt-5.4-nano": { in: 0.2, out: 1.25 },
 };
-const DEFAULT_PRICE = { in: 1, out: 4 };
+const DEFAULT_PRICE = { in: 2, out: 10 };
+// The web_search tool is billed per call on top of tokens.
+const WEB_SEARCH_CALL_USD = 0.01;
 
 export class BudgetExceededError extends Error {
   constructor() {
-    super("Daily AI budget reached for this account. It resets at midnight UTC.");
+    super("Today's AI allowance for this account is used up. It resets at midnight UTC; Pro has a larger allowance.");
   }
 }
 
@@ -49,7 +55,34 @@ export async function spentToday(userId: string): Promise<number> {
 
 async function assertBudget(userId: string | null) {
   if (!userId) return; // shared/public work (listing extraction) is budgeted by the cron cadence
-  if ((await spentToday(userId)) >= env.DAILY_LLM_BUDGET_USD) throw new BudgetExceededError();
+  const { dailyAiUsd } = planLimits(await getPlan(userId));
+  if ((await spentToday(userId)) >= dailyAiUsd) throw new BudgetExceededError();
+}
+
+// Newer reasoning models reject sampling parameters such as temperature. When the API says a
+// parameter is unsupported we drop it, retry, and remember that for the model.
+const OPTIONAL_PARAMS = ["temperature", "reasoning_effort"] as const;
+const unsupported = new Map<string, Set<string>>();
+
+function rejectedParam(err: unknown): string | null {
+  if (!(err instanceof OpenAI.APIError) || err.status !== 400) return null;
+  const text = `${err.message} ${JSON.stringify(err.error ?? "")}`.toLowerCase();
+  return OPTIONAL_PARAMS.find((p) => text.includes(p)) ?? null;
+}
+
+type ChatParams = OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;
+
+export async function createChat(params: ChatParams): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+  const skip = unsupported.get(params.model) ?? new Set<string>();
+  const request = Object.fromEntries(Object.entries(params).filter(([k]) => !skip.has(k))) as ChatParams;
+  try {
+    return await getClient().chat.completions.create(request);
+  } catch (err) {
+    const param = rejectedParam(err);
+    if (!param || skip.has(param) || !(param in request)) throw err;
+    unsupported.set(params.model, new Set([...skip, param]));
+    return createChat(params);
+  }
 }
 
 export async function logRun(entry: {
@@ -61,6 +94,8 @@ export async function logRun(entry: {
   ms: number;
   ok: boolean;
   error?: string;
+  /** Per-call fees on top of tokens, e.g. web search. */
+  extraUsd?: number;
 }) {
   try {
     const db = await getDb();
@@ -72,7 +107,7 @@ export async function logRun(entry: {
       model: entry.model,
       tokensIn,
       tokensOut,
-      costUsd: estimateCost(entry.model, tokensIn, tokensOut),
+      costUsd: estimateCost(entry.model, tokensIn, tokensOut) + (entry.extraUsd ?? 0),
       ms: entry.ms,
       ok: entry.ok,
       error: entry.error?.slice(0, 500),
@@ -122,13 +157,12 @@ function extractJson(text: string): unknown {
 }
 
 /**
- * Schema-guaranteed JSON from Muse Spark. Tries strict json_schema first and falls
+ * Schema-guaranteed JSON from the model. Tries strict json_schema first and falls
  * back to json_object + schema-in-prompt if the endpoint rejects strict mode.
  */
 export async function structured<T extends z.ZodType>(req: StructuredRequest<T>): Promise<z.infer<T>> {
   await assertBudget(req.userId);
   const model = req.model ?? env.MODEL_DEFAULT;
-  const ai = getClient();
   const jsonSchema = toStrictJsonSchema(req.schema);
   const started = Date.now();
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -138,7 +172,7 @@ export async function structured<T extends z.ZodType>(req: StructuredRequest<T>)
 
   const attempts: Array<() => Promise<OpenAI.Chat.Completions.ChatCompletion>> = [
     () =>
-      ai.chat.completions.create({
+      createChat({
         model,
         messages,
         temperature: req.temperature ?? 0.2,
@@ -148,7 +182,7 @@ export async function structured<T extends z.ZodType>(req: StructuredRequest<T>)
         },
       }),
     () =>
-      ai.chat.completions.create({
+      createChat({
         model,
         temperature: req.temperature ?? 0.2,
         response_format: { type: "json_object" },
@@ -229,6 +263,7 @@ export async function searchGrounded(opts: {
       tokensOut: res.usage?.output_tokens,
       ms: Date.now() - started,
       ok: true,
+      extraUsd: (res.output ?? []).filter((i) => i.type === "web_search_call").length * WEB_SEARCH_CALL_USD,
     });
     return { text: res.output_text ?? "", citations };
   } catch (err) {

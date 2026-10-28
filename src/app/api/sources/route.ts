@@ -5,9 +5,9 @@ import { scrapeWebsite, websiteSourceId } from "@/lib/connectors/website";
 import { getDb, schema } from "@/lib/db";
 import { fail, handle, ok } from "@/lib/http";
 import { upsertOpportunities } from "@/lib/ingest";
+import { getPlan, planLimits } from "@/lib/plans";
 import { UnsafeUrlError } from "@/lib/safe-fetch";
 
-const MAX_SITES_PER_USER = 10;
 const THROTTLE_MS = 5_000;
 const SAMPLE = 5;
 
@@ -57,7 +57,12 @@ export const POST = handle(async (req: Request) => {
     .select({ n: count() })
     .from(schema.sources)
     .where(and(eq(schema.sources.kind, "website"), eq(schema.sources.addedBy, userId)));
-  if (n >= MAX_SITES_PER_USER) return fail(422, `You can watch up to ${MAX_SITES_PER_USER} websites. Remove one first.`);
+  const plan = await getPlan(userId);
+  const { watchedSites } = planLimits(plan);
+  if (n >= watchedSites) {
+    const more = plan === "free" ? " Pro watches up to 10; see the Pricing page." : "";
+    return fail(422, `You can watch up to ${watchedSites} websites. Remove one first.${more}`);
+  }
 
   const id = websiteSourceId(url);
   const label = body.label || new URL(url).hostname.replace(/^www\./, "");

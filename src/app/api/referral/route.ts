@@ -4,6 +4,7 @@ import { draftReferral } from "@/lib/ai/agents";
 import { requireApiUser } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { fail, handle, ok } from "@/lib/http";
+import { getPlan, planLimits } from "@/lib/plans";
 
 export const maxDuration = 60;
 
@@ -18,6 +19,8 @@ export const POST = handle(async (req: Request) => {
   if (!profile?.parsed) return fail(400, "Upload your resume first, so the request can say who you are.");
   const [opp] = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, opportunityId));
   if (!opp) return fail(404, "Opportunity not found.");
-  const draft = await draftReferral({ userId, profile: profile.parsed, prefs: profile.prefs, opp });
+  // Free accounts get the template draft; Pro gets one written by the model.
+  const { aiReferrals } = planLimits(await getPlan(userId));
+  const draft = await draftReferral({ userId, useModel: aiReferrals, profile: profile.parsed, prefs: profile.prefs, opp });
   return ok({ ...draft.value, by: draft.by });
 });

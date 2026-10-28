@@ -206,3 +206,18 @@ export const outbox = pgTable("outbox", {
   providerId: text("provider_id"),
   createdAt: createdAt(),
 });
+
+// Razorpay subscription per user (one Pro plan). Webhooks keep `status` and the period current.
+export const subscriptions = pgTable("subscriptions", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  plan: text("plan").notNull().default("pro"),
+  razorpaySubscriptionId: text("razorpay_subscription_id").notNull().unique(),
+  // Razorpay's states: created | authenticated | active | pending | halted | cancelled | completed | expired
+  status: text("status").notNull(),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelAtCycleEnd: boolean("cancel_at_cycle_end").notNull().default(false),
+  createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

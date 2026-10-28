@@ -1,7 +1,7 @@
 import type OpenAI from "openai";
 import type { Page } from "playwright-core";
 import { env, isDemoMode } from "../env";
-import { getClient, logRun } from "../ai/client";
+import { createChat, logRun } from "../ai/client";
 import type { Profile, Tailored } from "../schemas";
 import { act, screenshot, snapshotFields, type Action, type FormField } from "./browser";
 
@@ -68,7 +68,7 @@ export function planHeuristicFill(fields: FormField[], a: Applicant): Action[] {
   return actions;
 }
 
-// ---------------- Muse Wonder computer-use loop ----------------
+// ---------------- Browser agent loop (vision + tools) ----------------
 
 const SYSTEM = `You are Opurnos's Apply Agent. You operate a real web browser to fill in ONE job/opportunity application on behalf of the applicant.
 Each turn you get: the applicant's data, the approved materials, your action history, the list of interactive elements (with ids), and a screenshot.
@@ -160,11 +160,10 @@ export async function runFillAgent(opts: {
   await log("action", `Pre-filled ${plan.length} standard fields from your profile.`, await screenshot(page));
 
   if (isDemoMode) {
-    return { status: "review", reason: "Demo mode: standard fields were filled by rules. Add a model key to let Muse Wonder handle custom questions." };
+    return { status: "review", reason: "Rules-only mode: standard fields were filled by rules. Add an OpenAI API key to let the agent handle custom questions." };
   }
 
-  // 2) Muse Wonder handles everything else, one observed action at a time.
-  const ai = getClient();
+  // 2) The model handles everything else, one observed action at a time.
   for (let step = 0; step < MAX_STEPS; step++) {
     if (Date.now() > deadline) return { status: "handoff", reason: "The agent ran out of time. Finish the remaining fields yourself." };
     const shot = await screenshot(page);
@@ -172,7 +171,7 @@ export async function runFillAgent(opts: {
     const started = Date.now();
     let res: OpenAI.Chat.Completions.ChatCompletion;
     try {
-      res = await ai.chat.completions.create({
+      res = await createChat({
         model: env.MODEL_AGENT,
         tools: TOOLS,
         tool_choice: "required",
