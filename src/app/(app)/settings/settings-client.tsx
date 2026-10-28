@@ -8,9 +8,21 @@ import { PrefsEditor } from "@/components/prefs-editor";
 import { LocalTime } from "@/components/local-time";
 import { Button, Panel, SectionLabel, Spinner } from "@/components/ui";
 import type { Preferences } from "@/lib/schemas";
+import type { SourceHealth } from "@/lib/source-health";
 import { cn } from "@/lib/utils";
+import { WatchWebsite } from "./watch-website";
 
-type Source = { id: string; kind: string; label: string; status: string; lastCount: number; lastError: string | null; lastRunAt: string | null };
+type Source = {
+  id: string;
+  kind: string;
+  label: string;
+  health: SourceHealth;
+  lastCount: number;
+  lastError: string | null;
+  lastRunAt: string | null;
+  url: string | null;
+  mine: boolean;
+};
 type Usage = { kind: string; model: string; calls: number; cost: number; tokens: number; failures: number };
 
 type Props = {
@@ -35,6 +47,7 @@ export function SettingsClient(props: Props) {
     <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="min-w-0 space-y-6">
         <PrefsSection initial={props.prefs} />
+        <WatchWebsite mySites={props.sources.flatMap((s) => (s.mine && s.url ? [{ id: s.id, label: s.label, url: s.url, lastCount: s.lastCount }] : []))} />
         <SourcesSection sources={props.sources} />
       </div>
       <aside className="space-y-6">
@@ -88,8 +101,18 @@ function PrefsSection({ initial }: { initial: Preferences }) {
   );
 }
 
+const HEALTH: Record<SourceHealth, { dot: string; label: string; hint: string }> = {
+  ok: { dot: "bg-eligible", label: "ok", hint: "" },
+  running: { dot: "bg-accent animate-pulse", label: "checking", hint: "" },
+  never: { dot: "bg-faint", label: "not run", hint: "" },
+  empty: { dot: "bg-likely", label: "empty", hint: "Returned no listings. Seasonal programs are empty between rounds; otherwise the page layout may have changed." },
+  stale: { dot: "bg-likely", label: "stale", hint: "Not checked in over a day. Is the ingest cron running?" },
+  error: { dot: "bg-danger", label: "error", hint: "" },
+};
+
 function SourcesSection({ sources }: { sources: Source[] }) {
-  const healthy = sources.filter((s) => s.status === "ok").length;
+  const healthy = sources.filter((s) => s.health === "ok").length;
+  const needsAttention = sources.filter((s) => s.health === "error" || s.health === "empty" || s.health === "stale");
   return (
     <Panel className="p-5 sm:p-6">
       <div className="flex items-center justify-between">
@@ -98,6 +121,20 @@ function SourcesSection({ sources }: { sources: Source[] }) {
           {healthy}/{sources.length} healthy
         </span>
       </div>
+      {needsAttention.length ? (
+        <ul className="mt-4 space-y-2" aria-label="Sources that need attention">
+          {needsAttention.map((s) => (
+            <li key={s.id} className="rounded-lg border border-border bg-sunken px-3 py-2 text-sm">
+              <span className="flex items-center gap-2">
+                <span className={cn("size-1.5 shrink-0 rounded-full", HEALTH[s.health].dot)} />
+                <span className="font-medium">{s.label}</span>
+                <span className="font-mono text-[10px] uppercase text-faint">{HEALTH[s.health].label}</span>
+              </span>
+              <p className="mt-1 break-words font-mono text-xs text-muted">{s.lastError ?? HEALTH[s.health].hint}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="scrollbar-thin mt-4 max-h-[420px] overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface text-left text-xs text-faint">
@@ -112,12 +149,12 @@ function SourcesSection({ sources }: { sources: Source[] }) {
               <tr key={s.id} title={s.lastError ?? undefined}>
                 <td className="py-2.5">
                   <span className="flex items-center gap-2">
-                    <span className={cn("size-1.5 shrink-0 rounded-full", s.status === "ok" ? "bg-eligible" : s.status === "error" ? "bg-danger" : "bg-faint")} />
+                    <span className={cn("size-1.5 shrink-0 rounded-full", HEALTH[s.health].dot)} aria-label={HEALTH[s.health].label} />
                     <span className="truncate">{s.label}</span>
                     <span className="font-mono text-[10px] uppercase text-faint">{s.kind}</span>
                   </span>
                 </td>
-                <td className="py-2.5 font-mono text-xs tabular text-muted">{s.status === "error" ? <span className="text-danger">error</span> : s.lastCount}</td>
+                <td className="py-2.5 font-mono text-xs tabular text-muted">{s.health === "error" ? <span className="text-danger">error</span> : s.lastCount}</td>
                 <td className="hidden py-2.5 font-mono text-xs text-faint sm:table-cell">{s.lastRunAt ? <LocalTime value={s.lastRunAt} /> : "never"}</td>
               </tr>
             ))}

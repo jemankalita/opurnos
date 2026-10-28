@@ -49,11 +49,11 @@ export const ProjectSchema = z.object({
 
 export const EducationSchema = z.object({
   school: z.string(),
-  degree: z.string().describe("e.g. B.Tech Computer Science"),
+  degree: z.string().describe("e.g. B.Tech Computer Science, or Class 12 (CBSE) for school"),
   level: z.enum(DEGREE_LEVELS),
   field: z.string().nullable(),
   gradYear: z.number().int().nullable(),
-  gpa: z.string().nullable(),
+  gpa: z.string().nullable().describe("Marks as written: '8.2/10', '8.2 CGPA', '85%'. Include Class 10 and 12 entries when listed"),
 });
 
 export const ProfileSchema = z.object({
@@ -70,6 +70,8 @@ export const ProfileSchema = z.object({
   skills: z.array(z.string()),
   achievements: z.array(z.string()).describe("Awards, hackathon wins, publications"),
   interests: z.array(z.string()).describe("Domains the person seems drawn to, e.g. 'robotics', 'quant'"),
+  // Indian campus and off-campus drives cut on this; resumes rarely state it, so users fill it in.
+  activeBacklogs: z.number().int().nullable().optional().describe("Uncleared backlogs (failed courses), only if stated"),
 });
 export type Profile = z.infer<typeof ProfileSchema>;
 
@@ -109,6 +111,12 @@ export const EligibilityRulesSchema = z.object({
   maxAge: z.number().int().nullable(),
   requiredSkills: z.array(z.string()),
   teamSize: z.string().nullable(),
+  // Academic cutoffs, common in Indian hiring drives and scholarships.
+  minCgpa: z.number().nullable().describe("Minimum CGPA on a 10-point scale ('CGPA 7 and above' -> 7)"),
+  minPercent: z.number().nullable().describe("Minimum percentage ('60% marks' -> 60)"),
+  marksThroughout: z.boolean().describe("The cutoff also applies to Class 10 and 12 ('60% throughout', 'in X, XII and graduation')"),
+  maxBacklogs: z.number().int().nullable().describe("Most active backlogs allowed ('no active backlogs' -> 0)"),
+  branches: z.array(z.string()).describe("Allowed branches, e.g. ['CSE', 'IT', 'ECE']; empty = any"),
   other: z.array(z.string()).describe("Any other stated requirement, verbatim"),
 });
 export type EligibilityRules = z.infer<typeof EligibilityRulesSchema>;
@@ -124,6 +132,11 @@ export const EMPTY_RULES: EligibilityRules = {
   maxAge: null,
   requiredSkills: [],
   teamSize: null,
+  minCgpa: null,
+  minPercent: null,
+  marksThroughout: false,
+  maxBacklogs: null,
+  branches: [],
   other: [],
 };
 

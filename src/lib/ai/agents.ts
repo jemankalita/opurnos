@@ -52,7 +52,7 @@ export async function parseResume(input: {
           return await structured({
             kind: "parse_resume",
             userId: input.userId,
-            system: P.PARSE_RESUME_V1,
+            system: P.PARSE_RESUME_V2,
             schema: ProfileSchema,
             schemaName: "profile",
             user: [
@@ -70,7 +70,7 @@ export async function parseResume(input: {
       return structured({
         kind: "parse_resume",
         userId: input.userId,
-        system: P.PARSE_RESUME_V1,
+        system: P.PARSE_RESUME_V2,
         schema: ProfileSchema,
         schemaName: "profile",
         user: `Resume text:\n"""\n${truncate(input.text, 30000)}\n"""`,
@@ -92,7 +92,7 @@ export async function extractRules(opp: { title: string; org: string; descriptio
         kind: "extract_rules",
         userId: null,
         model,
-        system: P.EXTRACT_RULES_V1,
+        system: P.EXTRACT_RULES_V2,
         schema: EligibilityRulesSchema,
         schemaName: "eligibility_rules",
         temperature: 0,

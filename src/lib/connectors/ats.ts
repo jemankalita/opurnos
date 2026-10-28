@@ -151,3 +151,71 @@ export function ashby(name: string, org: string): Connector {
     },
   };
 }
+
+// ---------- SmartRecruiters: api.smartrecruiters.com/v1/companies/{id}/postings (public Posting API) ----------
+
+type SmartRecruitersPosting = {
+  id: string;
+  name: string;
+  releasedDate?: string;
+  company?: { identifier?: string; name?: string };
+  location?: { fullLocation?: string; city?: string; country?: string; remote?: boolean; hybrid?: boolean };
+  typeOfEmployment?: { label?: string };
+  experienceLevel?: { id?: string; label?: string };
+  function?: { label?: string };
+  department?: { label?: string };
+};
+
+export function mapSmartRecruiters(company: string, org: string, p: SmartRecruitersPosting): RawOpportunity {
+  const url = `https://jobs.smartrecruiters.com/${company}/${p.id}`;
+  const level = p.experienceLevel?.id;
+  const tags = [p.function?.label, p.department?.label, p.typeOfEmployment?.label, level === "not_applicable" ? "" : p.experienceLevel?.label].filter(
+    (t): t is string => Boolean(t),
+  );
+  // fullLocation leaves gaps when a region is missing ("bangalore, , India").
+  const place = (p.location?.fullLocation ?? [p.location?.city, p.location?.country?.toUpperCase()].join(","))
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .join(", ");
+  return {
+    externalId: p.id,
+    url,
+    applyUrl: url,
+    ats: "smartrecruiters",
+    type: level === "internship" ? "internship" : classifyJob(p.name),
+    title: p.name.trim(),
+    org: p.company?.name && p.company.name !== p.company.name.toUpperCase() ? p.company.name : org,
+    orgLogo: null,
+    locations: [p.location?.remote ? "Remote" : "", place].filter(Boolean),
+    remote: Boolean(p.location?.remote),
+    deadline: null,
+    postedAt: parseDate(p.releasedDate),
+    tags,
+    // The list endpoint has no job description; fetching each posting would be one request per job.
+    description: [p.name, ...tags, place].filter(Boolean).join(" · "),
+  };
+}
+
+const SR_PAGE = 100;
+
+/** `country` is an ISO code; boards like Bosch's list thousands of roles worldwide. */
+export function smartRecruiters(company: string, org: string, country?: string, maxPages = 5): Connector {
+  return {
+    id: `smartrecruiters:${company.toLowerCase()}${country ? `:${country}` : ""}`,
+    kind: "smartrecruiters",
+    label: `${org} (SmartRecruiters${country ? `, ${country.toUpperCase()}` : ""})`,
+    fetch: async () => {
+      const out: RawOpportunity[] = [];
+      for (let page = 0; page < maxPages; page++) {
+        const q = new URLSearchParams({ limit: String(SR_PAGE), offset: String(page * SR_PAGE), ...(country ? { country } : {}) });
+        const data = await fetchJson<{ totalFound: number; content: SmartRecruitersPosting[] }>(
+          `https://api.smartrecruiters.com/v1/companies/${company}/postings?${q}`,
+        );
+        out.push(...data.content.map((p) => mapSmartRecruiters(company, org, p)));
+        if ((page + 1) * SR_PAGE >= data.totalFound) break;
+      }
+      return out;
+    },
+  };
+}

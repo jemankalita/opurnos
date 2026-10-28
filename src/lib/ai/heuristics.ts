@@ -1,5 +1,6 @@
 // Deterministic stand-ins for each agent. They run in demo mode (no MODEL_API_KEY) and as a
 // fallback when a model call fails, so the product degrades instead of breaking.
+import { extractAcademicRules } from "../academics";
 import { tokenize, truncate } from "../text";
 import type { RuleCheck } from "../eligibility";
 import {
@@ -48,7 +49,7 @@ function degreeLevel(line: string): Profile["education"][number]["level"] {
   if (/\bph\.?d\b|doctor/.test(l)) return "phd";
   if (/\bm\.?s\b|\bm\.?tech\b|master|\bmba\b|\bm\.?sc\b/.test(l)) return "masters";
   if (/\bb\.?s\b|\bb\.?tech\b|\bb\.?e\b|bachelor|\bb\.?sc\b|undergrad/.test(l)) return "bachelors";
-  if (/high school|secondary|class xii|12th/.test(l)) return "high_school";
+  if (/high school|secondary|class (xii?|x|1[02])\b|1[02]th|\b(hsc|ssc|cbse|icse)\b|matric/.test(l)) return "high_school";
   return "other";
 }
 
@@ -99,9 +100,15 @@ function skillsIn(text: string): string[] {
   });
 }
 
+// Most precise form first ("9.1/10" over "CGPA 9.1"). Only this line and the next are searched,
+// so one entry doesn't take the marks of the entry below it.
+const MARKS_FORMS = [/(\d\.\d{1,2})\s*\/\s*(4|10)(\.0)?/, /(?:cgpa|cpi)\s*:?\s*\d\.\d{1,2}/i, /\d{2}(?:\.\d+)?\s*%/];
+const marksNear = (text: string) => MARKS_FORMS.map((re) => text.match(re)?.[0]).find(Boolean) ?? null;
+
 function parseEducation(lines: string[], allYears: number[]): Profile["education"] {
-  const eduLines = lines.filter((l) => /universit|institute|college|school|iit|nit\b|iiit|academy/i.test(l));
-  return eduLines.slice(0, 2).map((line, i) => {
+  // Indian resumes list Class 12 and 10 with their board and marks; drives cut on those too.
+  const eduLines = lines.filter((l) => /universit|institute|college|school|iit|nit\b|iiit|academy|vidyalaya|\b(cbse|icse|hsc|ssc)\b|class (xii?|x|1[02])\b|1[02]th/i.test(l));
+  return eduLines.slice(0, 4).map((line, i) => {
     const idx = lines.indexOf(line);
     const near = lines.slice(idx, idx + 3).join(" ");
     const parts = line.split(/\s+[—–-]\s+|,\s+/);
@@ -110,9 +117,16 @@ function parseEducation(lines: string[], allYears: number[]): Profile["education
       school: truncate(parts[0], 120),
       degree: truncate((parts[1] ?? lines[idx + 1] ?? "").replace(/,?\s*(expected|class of|graduat).*$/i, "").trim(), 120),
       level: degreeLevel(near),
-      field: /computer|cs\b|software/i.test(near) ? "Computer Science" : /electric|electronic/i.test(near) ? "Electrical Engineering" : null,
+      // Electronics first: a bare `cs\b` would match the end of "Electronics".
+      field: /electronics (and|&) comm/i.test(near)
+        ? "Electronics and Communication"
+        : /computer|\bcs\b|software/i.test(near)
+          ? "Computer Science"
+          : /electric|electronic/i.test(near)
+            ? "Electrical Engineering"
+            : null,
       gradYear: nearYears.length ? Math.max(...nearYears) : i === 0 && allYears.length ? Math.max(...allYears) : null,
-      gpa: near.match(/(\d\.\d{1,2})\s*\/\s*(4|10)(\.0)?/)?.[0] ?? null,
+      gpa: marksNear(lines.slice(idx, idx + 2).join(" ")),
     };
   });
 }
@@ -217,7 +231,14 @@ export function extractRulesHeuristic(text: string): EligibilityRules {
   rules.studentsOnly = /(open to|only for|must be) (all )?(current(ly enrolled)? )?(university |college )?students/i.test(t);
   const team = t.match(/teams? (size )?of (\d)\s*(?:-|to|–)\s*(\d)/i);
   if (team) rules.teamSize = `${team[2]}-${team[3]}`;
-  return rules;
+  const academic = extractAcademicRules(t);
+  // "Graduating in 2027" above wins over batch phrasing; the rest only adds cutoffs.
+  return {
+    ...rules,
+    ...academic,
+    gradYearMin: rules.gradYearMin ?? academic.gradYearMin,
+    gradYearMax: rules.gradYearMax ?? academic.gradYearMax,
+  };
 }
 
 // tokenize() folds these phrases into short tokens; spell them out for people.

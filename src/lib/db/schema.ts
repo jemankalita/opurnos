@@ -56,6 +56,22 @@ export const sources = pgTable("sources", {
   lastCount: integer("last_count").notNull().default(0),
   lastError: text("last_error"),
   status: text("status").notNull().default("idle"), // idle | ok | error
+  // Only for kind "website": the page a user asked us to watch, and who added it.
+  url: text("url"),
+  addedBy: text("added_by").references(() => users.id, { onDelete: "cascade" }),
+});
+
+// Official pages of seasonal programs ("opens soon" watch). Only the lines about dates and
+// applications are kept, so a changed hash means those changed, not the page's chrome.
+export const pageWatches = pgTable("page_watches", {
+  id: text("id").primaryKey(),
+  url: text("url").notNull(),
+  hash: text("hash"),
+  lines: jsonb("lines").$type<string[]>().notNull().default([]),
+  added: jsonb("added").$type<string[]>().notNull().default([]), // lines that were new at the last change
+  checkedAt: timestamp("checked_at", { withTimezone: true }),
+  changedAt: timestamp("changed_at", { withTimezone: true }),
+  lastError: text("last_error"),
 });
 
 export const opportunities = pgTable(

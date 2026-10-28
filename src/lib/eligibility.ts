@@ -1,4 +1,5 @@
-import type { EligibilityRules, Evidence, Preferences, Profile, Verdict } from "./schemas";
+import { academicEvidence } from "./academics";
+import { EMPTY_RULES, type EligibilityRules, type Evidence, type Preferences, type Profile, type Verdict } from "./schemas";
 
 export type RuleCheck = {
   /** Worst outcome across hard rules: ineligible > unknown > eligible. */
@@ -31,10 +32,12 @@ export function isStudent(profile: Profile, now = new Date()): boolean | null {
 export function checkRules(
   profile: Profile,
   prefs: Preferences,
-  rules: EligibilityRules,
+  storedRules: EligibilityRules,
   deadline: Date | null,
   now = new Date(),
 ): RuleCheck {
+  // Rules stored before a field existed (e.g. the academic cutoffs) read as "no restriction".
+  const rules: EligibilityRules = { ...EMPTY_RULES, ...storedRules };
   const evidence: Evidence[] = [];
   const edu = latestEducation(profile);
 
@@ -100,6 +103,8 @@ export function checkRules(
       profileFact: edu?.gradYear ? `Graduating ${edu.gradYear}` : null,
     });
   }
+
+  evidence.push(...academicEvidence(profile, rules));
 
   const verdict = evidence.some((e) => e.status === "unmet")
     ? "ineligible"

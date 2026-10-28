@@ -1,10 +1,12 @@
 import { and, eq, isNotNull, lt, sql } from "drizzle-orm";
 import { allConnectors, type Connector, type RawOpportunity } from "./connectors";
+import { websiteConnector } from "./connectors/website";
 import { getDb, schema } from "./db";
 import { extractRulesHeuristic } from "./ai/heuristics";
 import type { ScoutLead } from "./ai/agents";
 import { contentHash, sha1 } from "./text";
 import { mapLimit } from "./concurrency";
+import { pageWatchConnector } from "./page-watch";
 
 const BATCH = 150;
 
@@ -78,7 +80,7 @@ export async function upsertOpportunities(sourceId: string, items: RawOpportunit
   return unique.length;
 }
 
-async function runConnector(c: Connector): Promise<SourceResult> {
+export async function runConnector(c: Connector): Promise<SourceResult> {
   const db = await getDb();
   const started = Date.now();
   await db
@@ -106,10 +108,23 @@ async function runConnector(c: Connector): Promise<SourceResult> {
 
 /** Runs every connector (bounded concurrency). A failing source never blocks the others. */
 export async function runIngest(filter?: (c: Connector) => boolean): Promise<SourceResult[]> {
-  const connectors = allConnectors().filter(filter ?? (() => true));
+  const connectors = [...allConnectors(), pageWatchConnector(), ...(await websiteConnectors())].filter(filter ?? (() => true));
   const results = await mapLimit(connectors, 4, runConnector);
   await expireClosed();
   return results;
+}
+
+/** Websites people asked us to watch (Settings → Watch a website). */
+async function websiteConnectors(): Promise<Connector[]> {
+  const db = await getDb();
+  const rows = await db.select().from(schema.sources).where(and(eq(schema.sources.kind, "website"), isNotNull(schema.sources.url)));
+  return rows.map((s) => websiteConnector({ id: s.id, url: s.url!, label: s.label }));
+}
+
+/** Takes a source's listings off the radar, e.g. when its website is removed. */
+export async function deactivateSource(sourceId: string) {
+  const db = await getDb();
+  await db.update(schema.opportunities).set({ isActive: false }).where(eq(schema.opportunities.sourceId, sourceId));
 }
 
 export async function expireClosed(now = new Date()) {

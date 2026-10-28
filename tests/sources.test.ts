@@ -45,6 +45,15 @@ describe("fetchJson", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("sends a JSON POST when given a body", async () => {
+    stubFetch(() => ({ ok: true }));
+    await fetchJson("https://x.test/search", { body: { q: 1 } });
+    const init = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0][1];
+    expect(init.method).toBe("POST");
+    expect(init.body).toBe('{"q":1}');
+    expect((init.headers as Record<string, string>)["content-type"]).toBe("application/json");
+  });
+
   it("retries server errors and then gives up", async () => {
     const calls = stubFetch(() => new Response("boom", { status: 503 }));
     await expect(fetchJson("https://x.test/flaky", { retries: 1 })).rejects.toThrow(/HTTP 503/);

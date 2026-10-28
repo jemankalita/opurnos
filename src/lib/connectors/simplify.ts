@@ -2,10 +2,18 @@ import { EMPTY_RULES, type EligibilityRules } from "../schemas";
 import { parseDate } from "../text";
 import { classifyJob, fetchJson, type Connector, type RawOpportunity } from "./types";
 
-// Community-maintained lists by Pitt CSC & Simplify (public GitHub). Updated daily.
+// Community-maintained lists on public GitHub (Pitt CSC & Simplify, and vanshb03). Updated daily.
+// Many listings appear on both; matching dedupes them by org, title and location.
 const LISTS = {
   internships: "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json",
   newgrad: "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/dev/.github/scripts/listings.json",
+  community: "https://raw.githubusercontent.com/vanshb03/Summer2027-Internships/dev/.github/scripts/listings.json",
+};
+
+const LABELS: Record<keyof typeof LISTS, string> = {
+  internships: "SimplifyJobs internships",
+  newgrad: "SimplifyJobs new grad",
+  community: "Summer 2027 internships (vanshb03)",
 };
 
 type SimplifyListing = {
@@ -15,7 +23,7 @@ type SimplifyListing = {
   url: string;
   locations?: string[];
   active: boolean;
-  is_visible: boolean;
+  is_visible?: boolean;
   date_posted?: number;
   date_updated?: number;
   sponsorship?: string;
@@ -52,7 +60,7 @@ export function mapSimplify(l: SimplifyListing, kind: keyof typeof LISTS): RawOp
     url: l.url,
     applyUrl: l.url,
     ats: /greenhouse/.test(l.url) ? "greenhouse" : /lever\.co/.test(l.url) ? "lever" : /ashbyhq/.test(l.url) ? "ashby" : /myworkdayjobs/.test(l.url) ? "workday" : "other",
-    type: kind === "internships" ? "internship" : classifyJob(l.title),
+    type: kind === "newgrad" ? classifyJob(l.title) : "internship",
     title: l.title.trim(),
     org: l.company_name.trim(),
     locations,
@@ -80,12 +88,12 @@ export function simplify(kind: keyof typeof LISTS): Connector {
   return {
     id: `simplify:${kind}`,
     kind: "simplify",
-    label: kind === "internships" ? "SimplifyJobs internships" : "SimplifyJobs new grad",
+    label: LABELS[kind],
     fetch: async () => {
       const data = await fetchJson<SimplifyListing[]>(LISTS[kind], { timeoutMs: 60_000 });
       const cutoff = Date.now() / 1000 - MAX_AGE_DAYS * 86_400;
       return data
-        .filter((l) => l.active && l.is_visible && (l.date_updated ?? l.date_posted ?? 0) >= cutoff)
+        .filter((l) => l.active && l.is_visible !== false && (l.date_updated ?? l.date_posted ?? 0) >= cutoff)
         .map((l) => mapSimplify(l, kind));
     },
   };

@@ -6,6 +6,7 @@ import { env, isDemoMode } from "@/lib/env";
 import { getProfileRow } from "@/lib/profile";
 import { getSources, getUsage } from "@/lib/queries";
 import { DEFAULT_PREFERENCES } from "@/lib/schemas";
+import { sourceHealth } from "@/lib/source-health";
 import { SettingsClient } from "./settings-client";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -29,7 +30,13 @@ export default async function SettingsPage() {
         demo={isDemoMode}
         budget={{ spent, cap: env.DAILY_LLM_BUDGET_USD, applyCap: env.DAILY_APPLY_CAP }}
         usage={usage}
-        sources={sources.map((s) => ({ ...s, lastRunAt: s.lastRunAt?.toISOString() ?? null }))}
+        sources={sources.map(({ addedBy, ...s }) => ({
+          ...s,
+          health: sourceHealth(s),
+          lastRunAt: s.lastRunAt?.toISOString() ?? null,
+          // Who added a website stays private; the client only learns whether it was you.
+          mine: addedBy === userId,
+        }))}
       />
     </div>
   );

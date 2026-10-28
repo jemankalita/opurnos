@@ -37,7 +37,7 @@ function opp(id: string, overrides: Partial<RawOpportunity> = {}): RawOpportunit
   };
 }
 
-const PHD_ONLY = { degreeLevels: ["phd" as const], gradYearMin: null, gradYearMax: null, countries: [], sponsorship: "unknown" as const, studentsOnly: false, minAge: null, maxAge: null, requiredSkills: [], teamSize: null, other: [] };
+const PHD_ONLY = { degreeLevels: ["phd" as const], gradYearMin: null, gradYearMax: null, countries: [], sponsorship: "unknown" as const, studentsOnly: false, minAge: null, maxAge: null, requiredSkills: [], teamSize: null, minCgpa: null, minPercent: null, marksThroughout: false, maxBacklogs: null, branches: [], other: [] };
 
 const LISTINGS: RawOpportunity[] = [
   opp("ml-hack", { title: "Machine Learning Hackathon", description: "Build ML systems in Python and PyTorch. Prizes for retrieval projects." }),

@@ -8,6 +8,7 @@ import { PrefsEditor, TagInput } from "@/components/prefs-editor";
 import { Art, Button, Panel, SectionLabel, Spinner } from "@/components/ui";
 import type { Preferences, Profile } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
+import { AcademicsFields } from "./academics-fields";
 
 type Step = "resume" | "parsing" | "profile" | "prefs" | "scanning";
 
@@ -365,6 +366,7 @@ function ProfileStep({
           <TagInput label="Skills" values={profile.skills} onChange={(skills) => onChange({ ...profile, skills })} placeholder="Add a skill" />
           <TagInput label="Interests" values={profile.interests} onChange={(interests) => onChange({ ...profile, interests })} placeholder="Add an interest" />
         </div>
+        <AcademicsFields profile={profile} onChange={onChange} field={field} />
         {profile.experience.length ? (
           <div className="p-5 sm:p-7">
             <SectionLabel className="mb-3">Experience we found</SectionLabel>

@@ -30,16 +30,37 @@ export type Connector = {
 
 const UA = "OpurnosBot/0.1 (+https://github.com/opurnos; opportunity discovery for students)";
 
-export async function fetchJson<T>(url: string, { timeoutMs = 20_000, retries = 2 } = {}): Promise<T> {
+type FetchOptions = { timeoutMs?: number; retries?: number; body?: unknown };
+
+export function fetchJson<T>(url: string, opts: FetchOptions = {}): Promise<T> {
+  return fetchWithRetry(url, "application/json", opts, (res) => res.json() as Promise<T>);
+}
+
+export function fetchText(url: string, opts: FetchOptions = {}): Promise<string> {
+  return fetchWithRetry(url, "text/html", opts, (res) => res.text());
+}
+
+/** GET by default; passing `body` sends it as a JSON POST. */
+async function fetchWithRetry<T>(
+  url: string,
+  accept: string,
+  { timeoutMs = 20_000, retries = 2, body }: FetchOptions,
+  read: (res: Response) => Promise<T>,
+): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(url, { headers: { "user-agent": UA, accept: "application/json" }, signal: controller.signal });
+      const res = await fetch(url, {
+        method: body === undefined ? "GET" : "POST",
+        headers: { "user-agent": UA, accept, ...(body === undefined ? {} : { "content-type": "application/json" }) },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: controller.signal,
+      });
       if (res.status === 404) throw new Error(`404 ${url}`);
       if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-      return (await res.json()) as T;
+      return await read(res);
     } catch (err) {
       lastError = err;
       if (err instanceof Error && err.message.startsWith("404")) break;
@@ -61,5 +82,8 @@ export function classifyJob(title: string): OpportunityType {
   if (RESEARCH_RE.test(title)) return "research";
   return "job";
 }
+
+/** Titles or posts aimed at students and recent graduates. */
+export const EARLY_CAREER_RE = /\b(intern(ship)?s?|co-?op|new grad(uate)?s?|junior|entry[- ]level|early[- ]career|graduate program|university grad(uate)?|apprentice(ship)?|fellow(ship)?|residency|student)\b/i;
 
 export const SENIOR_RE = /\b(senior|sr\.?|staff|principal|lead|manager|director|head of|vp|vice president|architect|distinguished)\b/i;

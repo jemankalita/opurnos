@@ -128,8 +128,14 @@ export default async function OpportunityPage({
           <Panel className="p-5 sm:p-6">
             <div className="flex items-center justify-between">
               <SectionLabel>About</SectionLabel>
-              <a href={opp.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted hover:text-text">
-                Original listing <ExternalLink className="size-3" />
+              {/* Remote OK's API terms require a followed link back that names them, with the referrer kept. */}
+              <a
+                href={opp.url}
+                target="_blank"
+                rel={opp.ats === "remoteok" ? "noopener" : "noopener noreferrer"}
+                className="inline-flex items-center gap-1 text-xs text-muted hover:text-text"
+              >
+                {opp.ats === "remoteok" ? "Original listing on Remote OK" : opp.ats === "pagewatch" ? "Official page" : "Original listing"} <ExternalLink className="size-3" />
               </a>
             </div>
             <div className="mt-4 max-h-[560px] overflow-y-auto whitespace-pre-line pr-2 text-sm leading-relaxed text-muted scrollbar-thin">

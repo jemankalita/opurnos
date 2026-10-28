@@ -2,12 +2,16 @@ import { eq } from "drizzle-orm";
 import { destroySession, requireApiUser } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { handle, ok } from "@/lib/http";
+import { deactivateSource } from "@/lib/ingest";
 
 /** Deletes the account and everything tied to it (profile, resume, matches, applications, run logs). */
 export const DELETE = handle(async () => {
   const { userId } = await requireApiUser();
   const db = await getDb();
   await db.delete(schema.agentRuns).where(eq(schema.agentRuns.userId, userId));
+  // Websites they added go with the account (FK cascade); take those listings off the radar first.
+  const sites = await db.select({ id: schema.sources.id }).from(schema.sources).where(eq(schema.sources.addedBy, userId));
+  for (const s of sites) await deactivateSource(s.id);
   await db.delete(schema.users).where(eq(schema.users.id, userId)); // cascades to profiles, matches, applications, steps
   await destroySession();
   return ok({ deleted: true });

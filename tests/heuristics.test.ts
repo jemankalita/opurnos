@@ -25,6 +25,21 @@ describe("extractRulesHeuristic", () => {
 });
 
 describe("parseResumeHeuristic", () => {
+  it("reads Indian marks: CGPA for the degree and Class 12/10 percentages", () => {
+    const p = parseResumeHeuristic(`Ravi Kumar
+ravi@example.com
+Education
+NIT Example, B.Tech Electronics and Communication, 2027, CGPA: 8.4
+Delhi Public School, Class XII (CBSE), 2023, 91.2%
+Delhi Public School, Class X (CBSE), 2021, 94%`);
+    expect(p.education.map((e) => [e.level, e.gpa])).toEqual([
+      ["bachelors", "CGPA: 8.4"],
+      ["high_school", "91.2%"],
+      ["high_school", "94%"],
+    ]);
+    expect(p.education[0].field).toBe("Electronics and Communication");
+  });
+
   it("pulls contact details and links from plain text", () => {
     const p = parseResumeHeuristic(`Asha Rao
 asha@example.com | +91 90000 00000 | github.com/asha

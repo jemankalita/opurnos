@@ -10,7 +10,7 @@
 > - **Database:** Drizzle on Postgres (Neon or Supabase via `DATABASE_URL`, embedded PGlite locally). Opurnos has its own magic-link auth, with resumes stored in the profile row, instead of Supabase Auth and Storage.
 > - **Triage:** keyword fit (phrase-aware tokens, title hits weighted double) instead of pgvector. There is no Meta embeddings endpoint, and keyword triage plus the LLM judge was good enough.
 > - **Apply worker:** TypeScript + Playwright in a Docker container (`worker/`, `Dockerfile`) on Railway or Fly, instead of a Python worker on Modal. It shares the apply code with the app.
-> - **Sources:** 22 connectors (Greenhouse, Lever, Ashby, SimplifyJobs, Devpost, Hack Club, Unstop) plus the web scout. MLH and Devfolio are not included yet.
+> - **Sources:** 68 connectors (Greenhouse, Lever, Ashby, Workday, Amazon, SimplifyJobs, vanshb03 internships, HN Who is hiring, Remote OK, Devpost, MLH, Devfolio, ETHGlobal, HackerEarth, Hack Club, Unstop, Google Summer of Code, Outreachy, curated programs) plus the web scout.
 > - **Not built:** voice onboarding (Muse Voice), Muse Image art, the ⌘K palette, the calendar export. They move to the post-hackathon roadmap.
 
 ---
