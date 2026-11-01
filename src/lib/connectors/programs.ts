@@ -1,6 +1,7 @@
 import { EMPTY_RULES, type EligibilityRules } from "../schemas";
 import { htmlToText, parseDate } from "../text";
 import { CURATED_PROGRAMS } from "./curated-programs";
+import { OSS_PROGRAMS } from "./oss-programs";
 import { fetchJson, fetchText, type Connector, type RawOpportunity } from "./types";
 
 // Seasonal programs: each emits one listing while its application window is open and nothing in between.
@@ -127,9 +128,9 @@ export const outreachy: Connector = {
 export const curated: Connector = {
   id: "curated",
   kind: "curated",
-  label: "Curated fellowships & scholarships",
+  label: "Curated fellowships, scholarships & open-source programs",
   fetch: async () =>
-    CURATED_PROGRAMS.map((p) => {
+    [...CURATED_PROGRAMS, ...OSS_PROGRAMS].map((p) => {
       const o: RawOpportunity & { checkedOn?: string } = { ...p };
       delete o.checkedOn;
       return o;

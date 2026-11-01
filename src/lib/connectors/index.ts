@@ -1,6 +1,6 @@
 import { ashby, greenhouse, lever, smartRecruiters } from "./ats";
 import { hnHiring, remoteOk } from "./boards";
-import { codechef, codeforces } from "./contests";
+import { atcoder, codechef, codeforces } from "./contests";
 import { amazon, workday, type WorkdayBoard } from "./careers";
 import { devfolio, devpost, ethglobal, hackclub, hackerearth, mlh, unstop } from "./hackathons";
 import { curated, gsoc, outreachy } from "./programs";
@@ -47,12 +47,18 @@ const GREENHOUSE: Array<[string, string]> = [
   ["okta", "Okta"],
   ["gitlab", "GitLab"],
   ["elastic", "Elastic"],
+  // Added 2026-11-02: open roles in India (count in brackets).
+  ["rubrik", "Rubrik"], // 31
+  ["hackerrank", "HackerRank"], // 15
+  ["twilio", "Twilio"], // 9
 ];
 const LEVER: Array<[string, string]> = [
   ["palantir", "Palantir"],
   ["cred", "CRED"],
   ["mindtickle", "Mindtickle"],
   ["zeta", "Zeta"],
+  ["paytm", "Paytm"], // 158 India roles on 2026-11-02
+  ["meesho", "Meesho"], // 47
 ];
 const ASHBY: Array<[string, string]> = [
   ["openai", "OpenAI"],
@@ -71,6 +77,7 @@ const ASHBY: Array<[string, string]> = [
   ["physicalintelligence", "Physical Intelligence"],
   ["sarvam", "Sarvam AI"],
   ["atlan", "Atlan"],
+  ["elevenlabs", "ElevenLabs"], // 9 India roles on 2026-11-02
 ];
 // Workday tenants whose public job search was verified on 2026-10-28.
 const WORKDAY: WorkdayBoard[] = [
@@ -144,6 +151,7 @@ export function allConnectors(): Connector[] {
     ...SMARTRECRUITERS.map(([c, n]) => smartRecruiters(c, n, "in")),
     codeforces,
     codechef,
+    atcoder,
     // kind "feed", not "website": website sources are the ones users add and can remove.
     ...FEEDS.map((f) => ({ ...websiteConnector(f), kind: "feed" })),
   ];

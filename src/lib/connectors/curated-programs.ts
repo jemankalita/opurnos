@@ -5,9 +5,9 @@ import type { RawOpportunity } from "./types";
 // eligibility rule were copied from the program's official page on `checkedOn`. Re-check each entry
 // before its next cycle, and leave `deadline` null unless the official page states the date.
 
-type CuratedProgram = RawOpportunity & { checkedOn: string };
+export type CuratedProgram = RawOpportunity & { checkedOn: string };
 
-const rules = (r: Partial<EligibilityRules>): EligibilityRules => ({ ...structuredClone(EMPTY_RULES), ...r });
+export const rules = (r: Partial<EligibilityRules>): EligibilityRules => ({ ...structuredClone(EMPTY_RULES), ...r });
 
 export const CURATED_PROGRAMS: CuratedProgram[] = [
   {
@@ -204,12 +204,18 @@ export const CURATED_PROGRAMS: CuratedProgram[] = [
     remote: true,
     deadline: null,
     comp: "Educational stipend",
-    tags: ["Open source", "Remote", "12 weeks"],
+    tags: ["Open source", "Remote", "12 weeks", "No projects for India-based fellows"],
     description:
       "A fully remote, 12-week internship alternative where participants earn a stipend and learn to collaborate on real open source projects with peers and engineers from top companies. " +
-      "Tracks for aspiring software engineers and SREs. Apply today to be considered for our upcoming start dates.",
-    rules: rules({}),
-    checkedOn: "2026-10-28",
+      "Tracks for aspiring software engineers and SREs. Apply today to be considered for our upcoming start dates. " +
+      "The official application form states: We do not currently anticipate having any available projects for fellows residing in the following countries: " +
+      "Afghanistan, Australia, Bangladesh, Bhutan, Cambodia, China, India, Indonesia, Japan, Kazakhstan, Korea, Kyrgyzstan, Laos, Malaysia, Micronesia and the Pacific Islands, Mongolia, Myanmar, Nepal, New Zealand, Pakistan, Papua New Guinea, Philippines, Singapore, Sri Lanka, Tajikistan, Thailand, Turkmenistan, Uzbekistan, Vietnam.",
+    rules: rules({
+      other: [
+        "We do not currently anticipate having any available projects for fellows residing in the following countries: Afghanistan, Australia, Bangladesh, Bhutan, Cambodia, China, India, Indonesia, Japan, Kazakhstan, Korea, Kyrgyzstan, Laos, Malaysia, Micronesia and the Pacific Islands, Mongolia, Myanmar, Nepal, New Zealand, Pakistan, Papua New Guinea, Philippines, Singapore, Sri Lanka, Tajikistan, Thailand, Turkmenistan, Uzbekistan, Vietnam",
+      ],
+    }),
+    checkedOn: "2026-11-02",
   },
   // India: summer research programs. Most Indian programs only post dates once a cycle opens,
   // and aggregator sites disagree, so only officially stated deadlines are filled in.

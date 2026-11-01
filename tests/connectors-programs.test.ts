@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixMojibake, mapHnPost, mapRemoteOk } from "@/lib/connectors/boards";
 import { CURATED_PROGRAMS } from "@/lib/connectors/curated-programs";
+import { OSS_PROGRAMS } from "@/lib/connectors/oss-programs";
 import { nextOccurrence, parseEthGlobal } from "@/lib/connectors/hackathons";
 import { curated, mapGsoc, parseOutreachy } from "@/lib/connectors/programs";
 
@@ -49,19 +50,32 @@ describe("parseOutreachy", () => {
 });
 
 describe("curated programs", () => {
+  const ALL = [...CURATED_PROGRAMS, ...OSS_PROGRAMS];
+
   it("every entry is dated, linked and unique", async () => {
-    const ids = new Set(CURATED_PROGRAMS.map((p) => p.externalId));
-    expect(ids.size).toBe(CURATED_PROGRAMS.length);
-    for (const p of CURATED_PROGRAMS) {
+    const ids = new Set(ALL.map((p) => p.externalId));
+    expect(ids.size).toBe(ALL.length);
+    for (const p of ALL) {
       expect(p.checkedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(p.url).toMatch(/^https:\/\//);
     }
     const listings = await curated.fetch();
-    expect(listings[0]).not.toHaveProperty("checkedOn");
+    expect(listings).toHaveLength(ALL.length);
+    for (const l of listings) expect(l).not.toHaveProperty("checkedOn");
+  });
+
+  it("includes the main paid open-source programs for Indian contributors", () => {
+    const ids = ALL.map((p) => p.externalId);
+    for (const id of ["summer-of-bitcoin", "lfx-mentorship", "c4gt-dmp", "ethereum-protocol-fellowship", "ospp", "btrust-developer-grants"]) expect(ids).toContain(id);
+  });
+
+  it("warns India-based applicants off the MLH Fellowship", () => {
+    const mlh = ALL.find((p) => p.externalId === "mlh-fellowship")!;
+    expect(mlh.rules?.other.join(" ")).toMatch(/India/);
   });
 
   it("each stated rule is quoted in the description, so evidence can cite it", () => {
-    for (const p of CURATED_PROGRAMS) for (const rule of p.rules?.other ?? []) expect(p.description).toContain(rule.replace(/\.$/, ""));
+    for (const p of ALL) for (const rule of p.rules?.other ?? []) expect(p.description).toContain(rule.replace(/\.$/, ""));
   });
 });
 

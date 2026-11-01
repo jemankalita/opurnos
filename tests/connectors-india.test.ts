@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mapSmartRecruiters, smartRecruiters } from "@/lib/connectors/ats";
-import { mapCodeChef, mapCodeforces } from "@/lib/connectors/contests";
+import { mapCodeChef, mapCodeforces, parseAtCoder } from "@/lib/connectors/contests";
 
 describe("Codeforces", () => {
   it("keeps upcoming rounds with the start as the deadline", () => {
@@ -61,5 +61,33 @@ describe("SmartRecruiters", () => {
     expect(out).toHaveLength(150);
     expect(urls).toHaveLength(2);
     expect(urls[0]).toContain("country=in");
+  });
+});
+
+describe("AtCoder", () => {
+  const row = (iso: string, slug: string, name: string, dur: string, rated: string) =>
+    `<tr><td class="text-center"><a href='http://x'><time class='fixtime fixtime-full'>${iso}</time></a></td>
+    <td ><span title="Algorithm">Ⓐ</span><span class="user-blue">◉</span> <a href="/contests/${slug}">${name}</a></td>
+    <td class="text-center">${dur}</td>
+    <td class="text-center">${rated}</td></tr>`;
+  const html = `<div id="contest-table-upcoming"><table><tbody>${row("2026-11-07 21:00:00+0900", "abc483", "AtCoder Beginner Contest 483", "01:40", " - 1999")}${row(
+    "2026-11-08 21:00:00+0900",
+    "agc079",
+    "AtCoder Grand Contest 079",
+    "03:30",
+    "-",
+  )}</tbody></table></div><div id="contest-table-recent"><table>${row("2026-10-01 21:00:00+0900", "abc470", "Old", "01:40", "-")}</table></div>`;
+
+  it("reads only upcoming contests, with the JST start time as the deadline", () => {
+    const list = parseAtCoder(html);
+    expect(list.map((o) => o.externalId)).toEqual(["abc483", "agc079"]);
+    expect(list[0].deadline?.toISOString()).toBe("2026-11-07T12:00:00.000Z");
+    expect(list[0]).toMatchObject({ type: "competition", url: "https://atcoder.jp/contests/abc483", tags: ["Competitive programming", "Rated -1999"] });
+    expect(list[0].description).toContain("1.7 hours");
+    expect(list[1].tags).toContain("Unrated");
+  });
+
+  it("returns nothing when the upcoming table is missing", () => {
+    expect(parseAtCoder("<html></html>")).toEqual([]);
   });
 });

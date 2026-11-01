@@ -43,7 +43,21 @@ export function isPrivateAddress(ip: string): boolean {
   if (v6 === "::" || v6 === "::1") return true;
   const mapped = v6.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
   if (mapped) return isPrivateAddress(mapped[1]);
+  // NAT64 well-known prefix (RFC 6052): on DNS64 networks every IPv4-only site resolves to
+  // 64:ff9b::<ipv4>, so judge the embedded IPv4 address instead of refusing the whole prefix.
+  const nat64 = nat64Ipv4(v6);
+  if (nat64) return isPrivateAddress(nat64);
   return /^(fc|fd|fe[89ab]|ff)/.test(v6) || v6.startsWith("64:ff9b:");
+}
+
+/** The IPv4 address inside a 64:ff9b::/96 address, in either hex or dotted form; null otherwise. */
+function nat64Ipv4(v6: string): string | null {
+  const dotted = v6.match(/^64:ff9b::(\d+\.\d+\.\d+\.\d+)$/);
+  if (dotted) return dotted[1];
+  const hex = v6.match(/^64:ff9b::([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (!hex) return null;
+  const [hi, lo] = [parseInt(hex[1], 16), parseInt(hex[2], 16)];
+  return [hi >> 8, hi & 255, lo >> 8, lo & 255].join(".");
 }
 
 /** Throws unless the URL is plain http(s) on a default port and every address it resolves to is public. */

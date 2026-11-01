@@ -98,7 +98,8 @@ describe("SSRF guard", () => {
     "treats %s as private",
     (ip) => expect(isPrivateAddress(ip)).toBe(true),
   );
-  it.each(["93.184.216.34", "8.8.8.8", "2606:4700::1111"])("treats %s as public", (ip) => expect(isPrivateAddress(ip)).toBe(false));
+  // NAT64 (DNS64 networks): 64:ff9b::b9c7:6c99 is 185.199.108.153.
+  it.each(["93.184.216.34", "8.8.8.8", "2606:4700::1111", "64:ff9b::b9c7:6c99", "64:ff9b::185.199.108.153"])("treats %s as public", (ip) => expect(isPrivateAddress(ip)).toBe(false));
 
   it.each([
     ["http://localhost:3000/", /standard web ports/],

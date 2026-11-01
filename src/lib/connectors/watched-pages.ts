@@ -181,6 +181,122 @@ export const WATCHED_PAGES: WatchedPage[] = [
     focus: /scientist|engineer|apprentice|online applications/i,
   },
 
+  // ---- Open-source programs (pages fetched 2026-11-02; robots.txt allows each) ----
+  {
+    id: "chaincode-boss-challenge",
+    url: "https://bosschallenge.xyz/",
+    title: "Chaincode BOSS Challenge",
+    org: "Chaincode Labs",
+    type: "fellowship",
+    locations: ["Online"],
+    tags: ["Open source", "Bitcoin", "Free", "Usually closes ~31 Dec"],
+    about:
+      "The ₿OSS Challenge is a Chaincode Labs initiative for coders serious about beginning a career in bitcoin open source software. " +
+      "A month of programming exercises (a minimum 10 hours per week), then two optional months with a partner organisation; top performers get funding paths through Spiral, Btrust, Brink and others. " +
+      "For the 2026 cohort, applications closed 31 December 2025 and the program started the week of 12 January.",
+    // The page is mostly testimonials; only cohort and application lines matter.
+    focus: /\b20[2-3]\d\b|waitlist|applications?|apply|deadline|cohort/i,
+  },
+  {
+    id: "season-of-kde",
+    url: "https://mentorship.kde.org/sok/",
+    title: "Season of KDE",
+    org: "KDE",
+    type: "fellowship",
+    locations: ["Online"],
+    tags: ["Open source", "Mentored", "Certificate and swag", "Usually Jan–Mar"],
+    about:
+      "Season of KDE is an outreach program hosted by the KDE community, with code and non-code projects. " +
+      "In 2026 the contributor application deadline was 14 January, work ran 23 January to 20 March, and certificates and swag followed. It builds a record for KDE's GSoC.",
+  },
+  {
+    id: "igalia-coding-experience",
+    url: "https://www.igalia.com/coding-experience/",
+    title: "Igalia Coding Experience",
+    org: "Igalia",
+    type: "internship",
+    locations: ["Online"],
+    tags: ["Open source", "Paid", "Browsers", "Graphics", "Compilers", "Usually opens Feb–Mar"],
+    about:
+      "The Igalia Coding Experience is a grant program for people studying Computer Science, Information Technology or Free Software, whether in a formal setting or self-taught, " +
+      "working with Igalia programmers on browsers (WebKit, Chromium), graphics (Mesa) and compilers. Applications have usually opened around February to March.",
+  },
+  {
+    id: "redox-summer-of-code",
+    url: "https://www.redox-os.org/rsoc/",
+    title: "Redox OS Summer of Code",
+    org: "Redox OS",
+    type: "internship",
+    locations: ["Online"],
+    tags: ["Open source", "Paid", "Rust", "Operating systems"],
+    about:
+      "Paid summer positions for students or recent graduates on Redox OS, a microkernel OS in Rust. You must be a skilled Rust programmer, have experience with low-level programming and be an Open Source contributor. " +
+      "The application process is informal: post in the Summer of Code chat room with your proposal.",
+  },
+  {
+    id: "gssoc",
+    url: "https://gssoc.girlscript.org/",
+    title: "GirlScript Summer of Code (GSSoC)",
+    org: "GirlScript Foundation",
+    type: "competition",
+    locations: ["Online"],
+    tags: ["Open source", "India", "Beginner-friendly", "Usually May–Aug"],
+    about:
+      "India's largest beginner-friendly open-source program, run by the non-profit GirlScript Foundation, usually from 1 May to 31 August. " +
+      "There's no stipend; top contributors on the leaderboard win prizes. The 2026 edition added an Agents for India track.",
+  },
+  {
+    id: "processing-foundation-fellowship",
+    url: "https://processingfoundation.org/programs/fellowships/",
+    title: "Processing Foundation Fellowship",
+    org: "Processing Foundation",
+    type: "fellowship",
+    locations: ["Online"],
+    tags: ["Open source", "Creative coding", "p5.js", "Usually Oct–Nov"],
+    about:
+      "Since 2013, the Processing Foundation Fellowship has supported emerging artists, educators, and coders, building open-source tools for the arts such as p5.js and Processing. " +
+      "Fellows have received $10,000 over 8 months. Nominations for the 2027 cycle closed on 1 November 2026.",
+  },
+  {
+    id: "nlnet-ngi-zero",
+    url: "https://nlnet.nl/propose/",
+    title: "NLnet / NGI Zero open-source grants",
+    org: "NLnet Foundation",
+    type: "grant",
+    locations: [],
+    tags: ["Open source", "Grant", "€5,000–€50,000", "Bimonthly deadlines"],
+    about:
+      "Grants for open-source technical development. Between € 5 000 and € 50 000 for a first grant. " +
+      "Our EU-supported funds require a strong European dimension; usually this means applicants should (mostly) be from Horizon Europe-eligible countries. Apply only once you have a concrete project.",
+    focus: /deadline/i,
+  },
+  {
+    id: "foss-hack",
+    url: "https://fossunited.org/fosshack", // redirects to the current edition
+    title: "FOSS Hack",
+    org: "FOSS United",
+    type: "hackathon",
+    locations: ["India"],
+    tags: ["Open source", "India", "Hackathon", "Hybrid"],
+    about:
+      "India's largest FOSS hackathon, a month-long hybrid event run by FOSS United. The 2026 edition ran 1 to 31 March with a ₹5,00,000 prize pool and results at the end of May. " +
+      "Opurnos watches this page for the next edition's dates.",
+  },
+
+  // ---- Hiring contests ----
+  {
+    id: "tcs-codevita",
+    url: "https://codevita.tcsapps.com/",
+    title: "TCS CodeVita",
+    org: "Tata Consultancy Services",
+    type: "competition",
+    locations: ["Online"],
+    tags: ["Competitive programming", "Fresher hiring", "Students"],
+    about:
+      "TCS's global programming contest, which the Guinness Book of World Records has twice listed as the world's largest programming competition. " +
+      "The official page lists students pursuing graduation or post-graduation and expecting to complete their course in 2027, 2028, 2029 or 2030 as eligible.",
+  },
+
   // ---- Exams ----
   {
     id: "gate-2027",
