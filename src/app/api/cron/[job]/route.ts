@@ -3,6 +3,9 @@ import { env, isDev } from "@/lib/env";
 import { bearerMatches, fail, handle, ok } from "@/lib/http";
 import { runIngest } from "@/lib/ingest";
 import { runMatching, usersDueForMatching } from "@/lib/matching";
+import { pruneAttempts } from "@/lib/portal/gate";
+import { refreshWatches } from "@/lib/portal/live";
+import { PROGRAMS } from "@/lib/portal/programs";
 
 export const maxDuration = 800;
 
@@ -10,6 +13,7 @@ export const maxDuration = 800;
  * Scheduled jobs. Production: call with `Authorization: Bearer $CRON_SECRET`
  * (Vercel Cron sends this automatically). Suggested cadence:
  *   ingest every 6h · match every 6h (after ingest) · digest hourly (sends in each user's due window)
+ *   portal daily (checks the tracker's official pages and prunes old passcode attempts)
  */
 export const GET = handle(async (req: Request, { params }: { params: Promise<{ job: string }> }) => {
   if (!isDev && !bearerMatches(req, env.CRON_SECRET)) return fail(401, "Unauthorized");
@@ -33,6 +37,10 @@ export const GET = handle(async (req: Request, { params }: { params: Promise<{ j
     }
     case "digest":
       return ok({ results: await sendDueDigests() });
+    case "portal": {
+      const watches = await refreshWatches(PROGRAMS);
+      return ok({ ...watches, prunedAttempts: await pruneAttempts() });
+    }
     default:
       return fail(404, `Unknown job "${job}"`);
   }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { accountSummary } from "@/lib/account";
+import { listSessions, requireUser } from "@/lib/auth";
 import { spentToday } from "@/lib/ai/client";
 import { calendarFeedUrl } from "@/lib/calendar";
 import { env, isBillingEnabled, isDemoMode } from "@/lib/env";
@@ -14,16 +15,19 @@ import { SettingsClient } from "./settings-client";
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
-  const { userId, email } = await requireUser();
+  const session = await requireUser();
+  const { userId, email } = session;
   const profile = await getProfileRow(userId);
   if (!profile?.onboarded) redirect("/start");
-  const [sources, usage, spent, feedUrl, plan, subscription] = await Promise.all([
+  const [sources, usage, spent, feedUrl, plan, subscription, account, sessions] = await Promise.all([
     getSources(),
     getUsage(userId),
     spentToday(userId),
     calendarFeedUrl(userId),
     getPlan(userId),
     getSubscription(userId),
+    accountSummary(userId),
+    listSessions(userId, session.sessionId),
   ]);
   const limits = planLimits(plan);
   return (
@@ -34,6 +38,13 @@ export default async function SettingsPage() {
       </header>
       <SettingsClient
         email={email}
+        account={{
+          email,
+          hasPassword: account?.hasPassword ?? false,
+          hasGoogle: account?.hasGoogle ?? false,
+          emailVerified: account?.emailVerified ?? false,
+        }}
+        sessions={sessions.map(({ id, userAgent, lastSeenAt, isCurrent }) => ({ id, userAgent, lastSeenAt, isCurrent }))}
         prefs={profile.prefs ?? DEFAULT_PREFERENCES}
         resumeName={profile.resumeFileName}
         lastDigestAt={profile.lastDigestAt?.toISOString() ?? null}

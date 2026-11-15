@@ -21,6 +21,12 @@ const EnvSchema = z.object({
 
   AUTH_SECRET: z.string().min(32).optional(),
   CRON_SECRET: z.string().optional(),
+  // Private-beta passcode. Set => the whole site sits behind /gate until a visitor enters it. Empty => no gate.
+  PORTAL_PASSCODE: z.string().optional(),
+
+  // "Continue with Google". Both set => the button shows; empty => email and password only.
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("Opurnos <radar@opurnos.app>"),
@@ -79,4 +85,5 @@ export function authSecret(): string {
 
 export const isDemoMode = !env.MODEL_API_KEY;
 export const isDev = env.NODE_ENV !== "production";
-export const isBillingEnabled = Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET && env.RAZORPAY_PRO_PLAN_ID);
+export const isGoogleAuthEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+export const isBillingEnabled =Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET && env.RAZORPAY_PRO_PLAN_ID);

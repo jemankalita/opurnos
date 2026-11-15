@@ -29,6 +29,20 @@
       "when": 1793225566712,
       "tag": "0003_brief_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793976170557,
+      "tag": "0004_milky_mother_askani",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794697514299,
+      "tag": "0005_wooden_ultimates",
+      "breakpoints": true
     }
   ]
 }

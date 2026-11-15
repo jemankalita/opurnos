@@ -1,25 +1,26 @@
+import { rateLimitKey } from "@/lib/account";
+import { safeNext } from "@/lib/auth-redirect";
 import { findOrCreateUser, normalizeEmail } from "@/lib/auth";
 import { magicLinkEmail, sendEmail } from "@/lib/email";
 import { env, isDev } from "@/lib/env";
 import { fail, handle, ok } from "@/lib/http";
+import { clientAddress } from "@/lib/portal/gate";
+import { enforce, LIMITS } from "@/lib/rate-limit";
 import { signToken } from "@/lib/tokens";
 
 const MAGIC_TTL = 15 * 60;
-
-// Per-email throttle (in-memory; good enough for a single instance, swap for Redis when scaling out).
-const lastSent = new Map<string, number>();
-const THROTTLE_MS = 30_000;
 
 export const POST = handle(async (req: Request) => {
   const body = (await req.json().catch(() => ({}))) as { email?: unknown; next?: unknown };
   const email = normalizeEmail(body.email);
   if (!email) return fail(400, "Enter a valid email address.");
-  const now = Date.now();
-  if (now - (lastSent.get(email) ?? 0) < THROTTLE_MS) return fail(429, "We just sent a link. Give it 30 seconds before asking again.");
-  lastSent.set(email, now);
+  await enforce([
+    [rateLimitKey("magic-email", email), LIMITS.emailLink],
+    [rateLimitKey("magic-address", clientAddress(req.headers)), LIMITS.emailPerAddress],
+  ]);
 
   const user = await findOrCreateUser(email);
-  const next = typeof body.next === "string" && body.next.startsWith("/") && !body.next.startsWith("//") ? body.next : "";
+  const next = safeNext(body.next, "");
   const token = await signToken({ sub: user.id, email, next }, "magic", MAGIC_TTL);
   const link = `${env.APP_URL}/api/auth/verify?t=${encodeURIComponent(token)}`;
   const { subject, html } = magicLinkEmail(link);

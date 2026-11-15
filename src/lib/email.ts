@@ -44,6 +44,28 @@ ${body}
 </table></td></tr></table></body></html>`;
 }
 
+function actionCard(title: string, lead: string, url: string, button: string) {
+  return `<tr><td style="background:${C.card};border:1px solid ${C.border};border-radius:16px;padding:32px">
+<h1 style="margin:0 0 12px;font-size:24px;font-weight:600">${esc(title)}</h1>
+<p style="margin:0 0 24px;color:${C.muted};font-size:15px;line-height:22px">${esc(lead)}</p>
+<a href="${esc(url)}" style="display:inline-block;background:${C.accent};color:#16171B;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px">${esc(button)}</a>
+<p style="margin:24px 0 0;color:${C.muted};font-size:12px">If you didn't ask for this, you can ignore it.</p></td></tr>`;
+}
+
+export function verifyEmailMessage(url: string) {
+  return {
+    subject: "Confirm your email for Opurnos",
+    html: layout("Confirm your email", actionCard("Confirm your email", "Confirm this address so we can send your digest and deadline reminders. The link expires in 2 days.", url, "Confirm email")),
+  };
+}
+
+export function passwordResetEmail(url: string) {
+  return {
+    subject: "Reset your Opurnos password",
+    html: layout("Reset your password", actionCard("Reset your password", "This link works once and expires in 30 minutes. Resetting signs you out on every other device.", url, "Choose a new password")),
+  };
+}
+
 export function magicLinkEmail(url: string) {
   return {
     subject: "Your Opurnos sign-in link",

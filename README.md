@@ -80,9 +80,9 @@ Browser ──▶ Next.js 16 app (Vercel)                         Apply worker (
                 PGlite locally)            api.openai.com    Subscriptions    (local outbox in dev)
 ```
 
-- **Auth**: passwordless magic links (a JWT signed with `jose`, single-use `jti`), an httpOnly session cookie, and a `proxy.ts` gate.
+- **Auth**: email and password (scrypt), optional Google sign-in, and magic links. Sessions are rows you can revoke. Tokens are JWTs signed with `jose` (`verify`, `reset`, `magic`, `oauth-state`), single-use via `jti`. Login, signup and email endpoints share a Postgres rate-limit table. `proxy.ts` sends signed-out visitors to `/login`, and the optional passcode gate does not cover the auth pages.
 - **Billing**: Razorpay Subscriptions. The server creates the subscription, Checkout collects the UPI AutoPay or card mandate, the Checkout signature is verified against the subscription id stored on the server, and signed webhooks (`subscription.*`) keep the status current. Deleting an account cancels its subscription first.
-- **Jobs**: plain cron route handlers. `ingest` runs every 6 h, `match` runs 30 min later (with the web scout for Pro accounts), and `digest` runs daily.
+- **Jobs**: plain cron route handlers. `ingest` runs every 6 h, `match` runs 30 min later (with the web scout for Pro accounts), `digest` runs daily, and `portal` runs daily to check the tracker's official pages and prune old passcode attempts.
 - **Apply sessions**: a filled form waits in a live browser for your approval for up to 20 minutes. The worker must run as a single instance.
 
 ## Run it locally
@@ -96,12 +96,12 @@ npm run dev                    # http://localhost:3000
 npm run ingest                 # pull live listings from all sources (~30 s)
 ```
 
-Sign in with any email. In development, the magic link appears on screen and in `/dev/outbox`. Upload a resume PDF, confirm your profile, and your radar fills. Add an `OPENAI_API_KEY` to switch from rules-only mode to the OpenAI models. To try billing, add Razorpay **test mode** keys and a test plan id.
+Create an account with a password, or ask for a one-time email link. In development, with no Resend key, that link appears on screen and in `/dev/outbox`. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to show "Continue with Google". Upload a resume PDF, confirm your profile, and your radar fills. Add an `OPENAI_API_KEY` to switch from rules-only mode to the OpenAI models. To try billing, add Razorpay **test mode** keys and a test plan id.
 
 | Script | |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js |
-| `npm test` | 305 unit, integration and browser tests (Vitest) |
+| `npm test` | 372 unit, integration and browser tests (Vitest) |
 | `npm run test:coverage` | coverage for `src/lib` |
 | `npm run lint` / `typecheck` | ESLint / `tsc` |
 | `npm run worker` | run the apply worker locally |
@@ -116,7 +116,7 @@ The tests run against:
 ## Deploy
 
 1. **Database**: create a Postgres database (Neon or Supabase) and set `DATABASE_URL`. The migrations in `drizzle/` run automatically on first connection.
-2. **App on Vercel**: import the repo and set these env vars from `.env.example`: `APP_URL`, `AUTH_SECRET`, `CRON_SECRET`, `OPENAI_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `DATABASE_URL`, `APPLY_WORKER_URL`, `APPLY_WORKER_SECRET`, plus the billing and business variables below. `vercel.json` schedules the crons. The 6-hourly crons need Vercel Pro; on Hobby, change them to daily.
+2. **App on Vercel**: import the repo and set these env vars from `.env.example`: `APP_URL`, `AUTH_SECRET`, `CRON_SECRET`, `PORTAL_PASSCODE`, `OPENAI_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `DATABASE_URL`, `APPLY_WORKER_URL`, `APPLY_WORKER_SECRET`, plus the billing and business variables below. `vercel.json` schedules the crons. The 6-hourly crons need Vercel Pro; on Hobby, change them to daily.
 3. **Apply worker** on Railway, Fly or any Docker host: build the `Dockerfile`, set `DATABASE_URL`, `APPLY_WORKER_SECRET` and `OPENAI_API_KEY`, and run one instance only. Then point `APPLY_WORKER_URL` at it.
 4. **Email**: verify your sending domain in Resend and set `EMAIL_FROM`.
 5. **Billing (Razorpay)**:
@@ -124,6 +124,12 @@ The tests run against:
    - Under Subscriptions → Plans, create a monthly plan for ₹199 and set `RAZORPAY_PRO_PLAN_ID`. If you choose another price, set `PRO_PRICE_INR` to match.
    - Under Webhooks, add `https://<your domain>/api/billing/webhook` with all `subscription.*` events and a secret, and set `RAZORPAY_WEBHOOK_SECRET`.
    - Razorpay reviews your website before turning on live mode. The Pricing, Terms, Privacy, Cancellation & Refunds and Contact pages are built in. Set `COMPANY_NAME`, `SUPPORT_EMAIL`, `COMPANY_ADDRESS` and `GRIEVANCE_OFFICER` so they show your real business details, and have the policy text reviewed for your business before launch.
+
+## Private portal
+
+The whole site sits behind a passcode gate at `/gate`. Only the pricing and legal pages stay public, because Razorpay's review needs them. Set `PORTAL_PASSCODE`; if it's empty, the gate stays shut. Each visitor gets 3 tries, then a 30-minute lockout, counted on the server. Once unlocked, a 30-day cookie opens `/portal`.
+
+`/portal` is a hand-checked tracker of programs for 1st and 2nd-year students (`src/lib/portal/programs-*.ts`), split into "First year only" and "First and second year". Status is worked out from today's date. Only published dates read "Open"; projections are labelled. Official pages marked `watch` are checked daily, and a change shows on the card. Listings from the radar with early-year titles appear below.
 
 ## Repo layout
 

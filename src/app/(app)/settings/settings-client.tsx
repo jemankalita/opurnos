@@ -10,6 +10,7 @@ import { Button, buttonClass, Panel, SectionLabel, Spinner } from "@/components/
 import type { Preferences } from "@/lib/schemas";
 import type { SourceHealth } from "@/lib/source-health";
 import { cn } from "@/lib/utils";
+import { AccountSecurity } from "./account-security";
 import { PlanSection, type Billing } from "./plan-section";
 import { WatchWebsite } from "./watch-website";
 
@@ -26,8 +27,13 @@ type Source = {
 };
 type Usage = { kind: string; model: string; calls: number; cost: number; tokens: number; failures: number };
 
+type AccountBits = { email: string; hasPassword: boolean; hasGoogle: boolean; emailVerified: boolean };
+type Device = { id: string; userAgent: string | null; lastSeenAt: string; isCurrent: boolean };
+
 type Props = {
   email: string;
+  account: AccountBits;
+  sessions: Device[];
   prefs: Preferences;
   resumeName: string | null;
   lastDigestAt: string | null;
@@ -56,6 +62,7 @@ export function SettingsClient(props: Props) {
       <aside className="space-y-6">
         <PlanSection billing={props.billing} />
         <AccountSection email={props.email} resumeName={props.resumeName} />
+        <AccountSecurity account={props.account} sessions={props.sessions} />
         <DigestSection lastDigestAt={props.lastDigestAt} />
         <CalendarSection feedUrl={props.calendarFeedUrl} />
         <UsageSection demo={props.demo} budget={props.budget} usage={props.usage} />
