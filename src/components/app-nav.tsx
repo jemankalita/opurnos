@@ -1,6 +1,6 @@
 "use client";
 
-import { KanbanSquare, LogOut, Moon, Radar as RadarIcon, Settings, Sun, UserRound } from "lucide-react";
+import { Compass, KanbanSquare, LogOut, Moon, Radar as RadarIcon, Settings, Sun, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/radar", label: "Radar", icon: RadarIcon },
   { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
+  { href: "/portal", label: "Start early", icon: Compass },
   { href: "/start", label: "Profile", icon: UserRound },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -98,8 +99,8 @@ export function AppNav({ email, demo }: { email: string; demo: boolean }) {
         <div className="rule-dotted" />
       </header>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 bg-bg pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Main">
-        <div className="rule-dotted col-span-4" />
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 bg-bg pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Main">
+        <div className="rule-dotted col-span-5" />
         {NAV.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}

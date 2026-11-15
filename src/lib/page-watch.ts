@@ -84,7 +84,7 @@ async function notifyChange(page: WatchedPage, added: string[], now: Date) {
 
 type CheckResult = { state: WatchState | null; error?: string };
 
-async function checkPage(page: WatchedPage, now: Date): Promise<CheckResult> {
+export async function checkPage(page: WatchedPage, now: Date): Promise<CheckResult> {
   const db = await getDb();
   const [row] = await db.select().from(schema.pageWatches).where(eq(schema.pageWatches.id, page.id));
   let lines: string[];

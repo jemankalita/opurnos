@@ -29,7 +29,36 @@ const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull(
 export const users = pgTable("users", {
   id: id(),
   email: text("email").notNull().unique(),
+  name: text("name"),
+  // scrypt hash; null for accounts that only ever used email links or Google.
+  passwordHash: text("password_hash"),
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  googleSub: text("google_sub").unique(),
   createdAt: createdAt(),
+});
+
+// One row per signed-in device, so a session can be listed and revoked (sign out everywhere).
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userAgent: text("user_agent"),
+    createdAt: createdAt(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [index("sessions_user").on(t.userId)],
+);
+
+// Fixed-window counters for login, signup and email endpoints. Shared across server instances.
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const profiles = pgTable("profiles", {
@@ -72,6 +101,14 @@ export const pageWatches = pgTable("page_watches", {
   checkedAt: timestamp("checked_at", { withTimezone: true }),
   changedAt: timestamp("changed_at", { withTimezone: true }),
   lastError: text("last_error"),
+});
+
+// Wrong passcode tries at the portal gate, keyed by a salted hash of the visitor's address.
+export const portalAttempts = pgTable("portal_attempts", {
+  visitor: text("visitor").primaryKey(),
+  failures: integer("failures").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const opportunities = pgTable(

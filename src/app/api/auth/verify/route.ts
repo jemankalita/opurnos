@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { createSession } from "@/lib/auth";
+import { createSession, markEmailVerified } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { consumeToken, verifyToken } from "@/lib/tokens";
@@ -11,6 +11,7 @@ export async function GET(req: Request) {
   if (!payload?.email || !(await consumeToken(payload.jti))) {
     return NextResponse.redirect(new URL("/login?error=expired", env.APP_URL));
   }
+  await markEmailVerified(payload.sub);
   await createSession(payload.sub, payload.email);
   const db = await getDb();
   const [profile] = await db.select({ onboarded: schema.profiles.onboarded }).from(schema.profiles).where(eq(schema.profiles.userId, payload.sub));

@@ -1,4 +1,5 @@
 import { ashby, greenhouse, lever, smartRecruiters } from "./ats";
+import { recruitee, rippling, workable } from "./boards-ats";
 import { hnHiring, remoteOk } from "./boards";
 import { atcoder, codechef, codeforces } from "./contests";
 import { amazon, workday, type WorkdayBoard } from "./careers";
@@ -149,6 +150,10 @@ export function allConnectors(): Connector[] {
     ...LEVER.map(([s, n]) => lever(s, n)),
     ...ASHBY.map(([s, n]) => ashby(s, n)),
     ...SMARTRECRUITERS.map(([c, n]) => smartRecruiters(c, n, "in")),
+    // Public widget APIs the other ATS connectors don't cover. Each slug was returning listings on 2026-11-15.
+    workable("huggingface", "Hugging Face"),
+    recruitee("bunq", "bunq"),
+    rippling("rippling", "Rippling"),
     codeforces,
     codechef,
     atcoder,

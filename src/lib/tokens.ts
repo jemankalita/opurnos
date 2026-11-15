@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { getDb, schema } from "./db";
 import { authSecret } from "./env";
 
-export type TokenPurpose = "session" | "magic" | "apply" | "calendar";
+export type TokenPurpose = "session" | "magic" | "apply" | "calendar" | "verify" | "reset" | "oauth-state";
 
 const key = () => new TextEncoder().encode(authSecret());
 
